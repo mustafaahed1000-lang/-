@@ -25,22 +25,22 @@ export default function Dashboard() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-10 rounded-3xl relative overflow-hidden bg-[var(--bg-surface)] border border-[var(--border-color)] shadow-xl shadow-primary/5 transition-colors duration-300"
+                    className="p-5 sm:p-10 rounded-3xl relative overflow-hidden bg-[var(--bg-surface)] border border-[var(--border-color)] shadow-xl shadow-primary/5 transition-colors duration-300"
                 >
                     {/* Ambient Glows for the Banner */}
                     <div className="absolute -top-32 -right-32 w-80 h-80 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
                     <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-secondary/10 blur-[100px] rounded-full pointer-events-none" />
 
                     <div className="relative z-10">
-                        <h1 className="text-3xl font-display font-bold mb-3 text-[var(--text-main)]">كيف يمكنني مساعدتك اليوم، أحمد؟ ✨</h1>
-                        <p className="text-[var(--text-muted)] font-bold text-lg mb-8">ارفع موادك، ابدأ محادثة جديدة، أو راجع خطتك الدراسية.</p>
+                        <h1 className="text-xl sm:text-3xl font-display font-bold mb-2 text-[var(--text-main)]">كيف يمكنني مساعدتك اليوم? ✨</h1>
+                        <p className="text-[var(--text-muted)] font-bold text-sm sm:text-lg mb-5">ارفع موادك، ابدأ محادثة جديدة، أو راجع خطتك الدراسية.</p>
 
-                        <div className="flex flex-wrap gap-4">
-                            <button onClick={() => navigate('/chat')} className="btn-primary flex items-center gap-2 px-8 py-3 text-white shadow-xl shadow-primary/20 cursor-pointer">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <button onClick={() => navigate('/chat')} className="btn-primary flex items-center justify-center gap-2 px-6 py-3 text-white shadow-xl shadow-primary/20 cursor-pointer">
                                 <Plus className="w-5 h-5" />
                                 محادثة جديدة
                             </button>
-                            <button onClick={() => navigate('/files')} className="glass-widget flex items-center gap-2 px-8 py-3 font-bold hover:bg-[var(--hover-bg)] border border-[var(--border-color)] text-[var(--text-main)] bg-[var(--widget-bg)] shadow-md cursor-pointer">
+                            <button onClick={() => navigate('/files')} className="glass-widget flex items-center justify-center gap-2 px-6 py-3 font-bold hover:bg-[var(--hover-bg)] border border-[var(--border-color)] text-[var(--text-main)] bg-[var(--widget-bg)] shadow-md cursor-pointer">
                                 <BookOpen className="w-5 h-5 text-secondary" />
                                 إضافة مادة (PDF/Word)
                             </button>
@@ -49,7 +49,7 @@ export default function Dashboard() {
                 </motion.div>
 
                 {/* Quick Actions Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                     <ActionCard
                         icon={<Brain className="w-6 h-6 text-[#c4f042]" />}
                         title="حل الواجبات (نظري/عملي)"
@@ -119,15 +119,15 @@ function ActionCard({ title, desc, icon, color, onClick }: { title: string, desc
             onClick={onClick}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="glass-widget p-6 text-right flex flex-col items-start gap-4 border-0 shadow-lg relative overflow-hidden group cursor-pointer"
+            className="glass-widget p-4 sm:p-6 text-right flex flex-col items-start gap-3 border-0 shadow-lg relative overflow-hidden group cursor-pointer w-full"
         >
             <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${color} opacity-20 blur-2xl rounded-full group-hover:opacity-40 transition-opacity`} />
-            <div className="w-12 h-12 rounded-xl bg-[var(--widget-bg)] border border-[var(--border-color)] flex items-center justify-center relative z-10 group-hover:border-primary/50 transition-colors">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[var(--widget-bg)] border border-[var(--border-color)] flex items-center justify-center relative z-10 group-hover:border-primary/50 transition-colors">
                 {icon}
             </div>
             <div className="relative z-10">
-                <h4 className="font-bold text-lg mb-1 text-[var(--text-main)]">{title}</h4>
-                <p className="text-sm text-[var(--text-muted)]">{desc}</p>
+                <h4 className="font-bold text-sm sm:text-base mb-0.5 text-[var(--text-main)] leading-tight">{title}</h4>
+                <p className="text-xs text-[var(--text-muted)] hidden sm:block">{desc}</p>
             </div>
         </motion.button>
     );

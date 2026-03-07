@@ -5,10 +5,10 @@ import { db } from '../lib/db/database';
 import { processDocument } from '../lib/rag/documentParser';
 import type { ParsedDocument } from '../lib/rag/documentParser';
 import { globalVectorStore } from '../lib/rag/vectorStore';
-import { DocumentUploader } from '../components/NotebookLM/DocumentUploader';
+// import { DocumentUploader } from '../components/NotebookLM/DocumentUploader';
 import { ZamaylSearch } from '../components/NotebookLM/ZamaylSearch';
 import type { ScrapedFile } from '../components/NotebookLM/ZamaylSearch';
-import { FileText, Trash2, Search, UploadCloud, Plus, AlertTriangle, FolderPlus } from 'lucide-react';
+import { FileText, Trash2, Search, Plus, AlertTriangle, FolderPlus } from 'lucide-react';
 
 export default function FilesPage() {
     const [savedDocs, setSavedDocs] = useState<ParsedDocument[]>([]);
@@ -65,6 +65,7 @@ export default function FilesPage() {
         setSavedDocs(docs);
     };
 
+    // @ts-ignore
     const handleFilesSelected = async (files: File[]) => {
         setIsProcessing(true);
         try {

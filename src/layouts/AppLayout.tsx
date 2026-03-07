@@ -55,41 +55,41 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             <main className="flex-1 flex flex-col min-w-0 lg:pr-72 relative">
 
-                <header className="sticky top-0 z-30 flex items-center justify-between p-4 lg:p-6 bg-[var(--bg-background)] backdrop-blur-xl border-b border-[var(--border-color)]">
-                    <div className="flex items-center gap-4">
+                <header className="sticky top-0 z-30 flex items-center justify-between px-3 py-3 lg:px-6 lg:py-4 bg-[var(--bg-background)] backdrop-blur-xl border-b border-[var(--border-color)]">
+                    <div className="flex items-center gap-2 min-w-0">
                         <button
                             onClick={() => setSidebarOpen(true)}
-                            className="lg:hidden p-2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                            className="lg:hidden p-2 flex-shrink-0 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
                         >
-                            <Menu className="w-6 h-6" />
+                            <Menu className="w-5 h-5" />
                         </button>
-                        <h2 className="text-xl font-bold hidden sm:block text-[var(--text-main)]">
+                        <h2 className="text-sm sm:text-lg font-bold hidden sm:block text-[var(--text-main)] truncate">
                             {displayName ? `مرحباً ${displayName} 👋` : 'مرحباً بك 👋'}
                         </h2>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={() => setIsDarkMode(!isDarkMode)}
-                            className="w-10 h-10 rounded-full glass-widget flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                            className="w-9 h-9 rounded-full glass-widget flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
                         >
-                            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                         </button>
-                        <button className="w-10 h-10 rounded-full glass-widget flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] relative">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full animate-pulse shadow-[0_0_10px_rgba(255,60,172,0.8)]" />
+                        <button className="w-9 h-9 rounded-full glass-widget flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] relative">
+                            <Bell className="w-4 h-4" />
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full animate-pulse shadow-[0_0_10px_rgba(255,60,172,0.8)]" />
                         </button>
                         <button
                             onClick={() => setSettingsOpen(true)}
-                            className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2ba396] to-[#238b7f] border border-[#2ba396]/30 flex items-center justify-center overflow-hidden shadow-md hover:scale-105 transition-transform"
+                            className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2ba396] to-[#238b7f] border border-[#2ba396]/30 flex items-center justify-center overflow-hidden shadow-md hover:scale-105 transition-transform flex-shrink-0"
                             title="إعدادات الحساب"
                         >
                             {user?.picture && !user.picture.startsWith('http') && !user.picture.startsWith('data:') ? (
-                                <span className="text-2xl">{user.picture}</span>
+                                <span className="text-lg">{user.picture}</span>
                             ) : user?.picture ? (
                                 <img src={user.picture} alt="Profile" className="w-full h-full rounded-full object-cover" />
                             ) : (
-                                <Settings className="w-5 h-5 text-white" />
+                                <Settings className="w-4 h-4 text-white" />
                             )}
                         </button>
                     </div>
