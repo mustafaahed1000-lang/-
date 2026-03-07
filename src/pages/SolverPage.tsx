@@ -1,3 +1,4 @@
+// ⚡ SOLVICA V10 - Smart Homework Solver & Exam Assistant
 import React, { useState, useEffect, useRef } from 'react';
 import AppLayout from '../layouts/AppLayout';
 import { db } from '../lib/db/database';
