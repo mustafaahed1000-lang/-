@@ -1,0 +1,9 @@
+language: "ar-AR"
+tone_instructions: "الرجاء مراجعة الكود بدقة واحترافية وبشكل مبسط، والتحدث باللغة العربية."
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+chat:
+  auto_reply: true
