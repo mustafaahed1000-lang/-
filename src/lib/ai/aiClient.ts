@@ -223,7 +223,7 @@ class AIClient {
     }
 
 
-    private async callTextSynth(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
+    private async callTextSynth(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
         const lastMsg = messages[messages.length - 1].content || "Hello";
         const res = await fetch(`https://api.textsynth.com/v1/engines/mistral_7B/completions?prompt=${encodeURIComponent(lastMsg)}`, { method: "POST" });
         if (!res.ok) throw new Error("TextSynth failed");
@@ -242,14 +242,14 @@ class AIClient {
         return json.choices?.[0]?.message?.content || "";
     }
 
-    private async callG4FHook(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
+    private async callG4FHook(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
         const lastMsg = messages[messages.length - 1].content || "Hello";
         const res = await fetch(`https://g4f.dev/api/ask?q=${encodeURIComponent(lastMsg)}`);
         if (!res.ok) throw new Error("G4F Hook failed");
         return await res.text();
     }
 
-    private async callG4FPollinations(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
+    private async callG4FPollinations(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
         const lastMsg = messages[messages.length - 1].content || "Hello";
         const res = await fetch(`https://g4f.dev/ai/pollinations?prompt=${encodeURIComponent(lastMsg)}`);
         if (!res.ok) throw new Error("G4F Pollinations failed");
@@ -270,7 +270,7 @@ class AIClient {
         throw new Error("AI Horde async response, skipping");
     }
 
-    private async callDDG(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
+    private async callDDG(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
         const lastMsg = messages[messages.length - 1].content;
         const res = await fetch(`https://hf.space/embed/mistralai/Mistral-7B-Instruct/run?prompt=${encodeURIComponent(lastMsg)}`);
         if (!res.ok) throw new Error("HF Space failed");
@@ -287,7 +287,7 @@ class AIClient {
         return root.response || root.text || root.choices?.[0]?.message?.content || "";
     }
 
-    private async callGenericFallbacks(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
+    private async callGenericFallbacks(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
         const lastMsg = messages[messages.length - 1].content;
         const encoded = encodeURIComponent(lastMsg);
 
