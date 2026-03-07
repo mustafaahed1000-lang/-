@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, BookOpen, Video, MessageSquare, Activity, Sun, Moon, Lock, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function LandingPage() {
-    const [showSplash, setShowSplash] = useState(true);
     const [isDarkMode, setIsDarkMode] = useState(() => {
         return localStorage.getItem('theme') !== 'light';
     });
@@ -204,7 +203,7 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
                     </div>
                 )}
 
-                <main className="flex flex-col lg:flex-row items-center justify-between gap-16 mt-8">
+                <main className="flex flex-col lg:flex-row items-center justify-between gap-6 sm:gap-16 mt-4 sm:mt-8">
 
                     {/* Left Hero Content */}
                     <div className="flex-1 flex flex-col items-start text-right">
@@ -222,17 +221,17 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.4 }}
-                            className="text-5xl md:text-7xl font-black mb-6 leading-[1.2]"
+                            className="text-3xl sm:text-5xl md:text-7xl font-black mb-4 sm:mb-6 leading-[1.2]"
                         >
                             ارتقِ بدراستك مع <br />
-                            <span className="text-gradient font-display text-6xl md:text-8xl mt-2 block tracking-widest">SOLVICA</span>
+                            <span className="text-gradient font-display text-4xl sm:text-6xl md:text-8xl mt-1 block tracking-widest">SOLVICA</span>
                         </motion.h1>
 
                         <motion.p
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.5 }}
-                            className="text-lg md:text-xl text-[var(--text-muted)] max-w-xl mb-10 leading-relaxed font-medium"
+                            className="text-sm sm:text-lg md:text-xl text-[var(--text-muted)] max-w-xl mb-6 sm:mb-10 leading-relaxed font-medium"
                         >
                             ارفع ملفاتك، ودع الذكاء الاصطناعي يحل واجباتك، يلخص كتبك، يشرحها بالفيديو، ويختبرك بها. رفيقك الدائم حتى بدون إنترنت.
                         </motion.p>
