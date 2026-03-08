@@ -44,9 +44,9 @@ export default function CourseChallenge() {
         if (!latestDoc) return;
         setGameState('generating');
         try {
-            // Feed a MASSIVE random section of the book (12 chunks) so the AI has plenty of material for a 15-question quiz
-            const shuffledChunks = [...latestDoc.chunks].sort(() => 0.5 - Math.random());
-            const textToAnalyze = shuffledChunks.slice(0, 12).map((c: any) => typeof c === 'string' ? c : (c.text || '')).join('\n---\n');
+            // Use ALL chunks (ordered) so the AI sees the full document and can extract real questions
+            const allChunks = [...latestDoc.chunks].map((c: any) => typeof c === 'string' ? c : (c.text || ''));
+            const textToAnalyze = allChunks.join('\n---\n').substring(0, 40000);
 
             const prompt = `أنت أستاذ أكاديمي صارم ومحترف.
 

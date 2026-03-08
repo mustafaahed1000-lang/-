@@ -52,49 +52,35 @@ export default function GeneratorPage() {
                 ? doc.chunks.map((c: any) => c.text)
                 : typeof doc.chunks[0] === 'string' ? doc.chunks : [];
 
+            // Use ALL chunks for exam files (don't cut context)
+            const contextStr = rawTextChunks.join('\n---\n').substring(0, 40000);
+
             const userQuery = prompt || "دليل دراسي شامل وتلخيص عميق لكل المفاهيم والأمثلة والتعريفات";
 
-            // SUPER FAST HEURISTIC RAG (Bypass slow/rate-limited Gemini Embeddings on Page Reload)
-            const queryWords = userQuery.replace(/شامل|دليل|ملخص|شرح|مادة/g, '').trim().split(/\s+/).filter(k => k.length > 2);
-            if (queryWords.length === 0) queryWords.push("سؤال", "امتحان", "حل", "تمرين", "شرح");
+            const sysPrompt = `أنت المساعد الأكاديمي الذكي (Solvica).
 
-            const scoredChunks = rawTextChunks.map(chunk => {
-                const text = chunk.toLowerCase();
-                let score = 0;
-                for (const kw of queryWords) {
-                    if (text.includes(kw.toLowerCase())) score++;
-                }
-                return { chunk, score };
-            });
-
-            // Sort by highest keyword match, then take top 35 chunks
-            scoredChunks.sort((a, b) => b.score - a.score);
-            const topChunks = scoredChunks.slice(0, 35).map(c => c.chunk);
-
-            // Guarantee global context: Append Intro/Outro for huge books
-            if (rawTextChunks.length > 10) {
-                const globalContext = rawTextChunks.slice(0, 3).concat(rawTextChunks.slice(-3));
-                topChunks.push(...globalContext);
-            }
-
-            const contextStr = Array.from(new Set(topChunks)).join('\n---\n').substring(0, 30000);
-
-            const sysPrompt = `أنت المساعد الأكاديمي الذكي الفائق (Solvica).
-المعلومات المتوفرة لك من الكتاب/المستند المرفق:
+=== محتوى المستند المرفق ===
 ${contextStr}
+=== نهاية المحتوى ===
 
-مهمتك: توليد تلخيص ومحتوى تفصيلي وعميق جداً وطوييييل بناءً على الطلب.
-**أوامر عسكرية صارمة جداً:**
-1. إياك أن تتحدث عن المستند نفسه أو تقول "بناء على المقتطفات" أو "المستند لا يحتوي على". 
-2. **قاعدة ذهبية واستثناء هام جداً جداً:** قبل أن تبدأ بالتلخيص، قم بتحليل النص المرفق. إذا كان النص المرفق عبارة عن "أسئلة امتحان" أو "اختبارات سابقة" أو "واجب" أو "تمارين"، **توقف فوراً عن ميزة التلخيص الشامل ولا تقم بتأليف وشرح منهج كامل**. بل وظيفتك الآن هي **حل هذه الأسئلة بالترتيب** مع توفير إجابات نموذجية دقيقة وشرح تفصيلي لكل حل.
-3. إذا كان المستند نظرياً (وليس أسئلة)، استخدم معرفتك الأكاديمية الواسعة لتكملة الشرح وجعله ضخماً ودقيقاً جداً.
-4. تجاهل صفحات الغلاف. ادخل في صلب الموضوع العلمي مباشرة.
-5. **التنسيق الإجباري:** يجب أن يكون الناتج في شكل HTML مبهر وبصرياً جذاب جداً! استخدم الكثيييير من الجداول الملونة (<table>)، والقوائم المنظمة (<ul>، <ol>)، والبطاقات المظللة، واستخدم الماركر والألوان لإبراز الكلمات (<strong>، <span style="color: blue;">). لا تجعله نصاً مملاً أبداً!
-6. أريد الجواب النهائي فقط بصيغة HTML. لا تكتب أي مقدمات أو اعتذارات الدكاء الاصطناعي.
+تعليمات مهمة جداً:
 
-الطلب المحدد: ${userQuery}`;
+**تحليل نوع الملف أولاً (إلزامي):**
+إذا كان النص يحتوي على أي من: أسئلة امتحان، أسئلة سابقة، تمارين، واجبات محلولة أو غير محلولة:
+→ **وظيفتك هي: حل كل سؤال بالترتيب مع شرح تفصيلي لكل خطوة.**
+- إذا كان السؤال محلولاً في الملف: اشرح لماذا هذا الجواب صحيح خطوة بخطوة.
+- إذا كان السؤال غير محلول: حله بنفسك مع شرح كامل.
+- **لا تتجاوز أي سؤال بدون خطوة حل.**
+- رقّم كل سؤال بوضوح: سؤال 1، سؤال 2، إلخ.
 
-            const response = await aiClient.chat([{ role: 'user', content: 'أعطني الملخص الأكاديمي الضخم المطلوب بصيغة HTML نظيف تماماً، ولا تكتب أي كلمة خارج الكود، ابدأ الكود بـ <div> وقم بإنهاءه بـ </div>.' }], { model: 'gpt-4o' }, sysPrompt);
+إذا كان الملف نظرياً (كتاب دراسي):
+→ اعمل تلخيصاً شاملاً بالتفصيل لكل فصل مع أمثلة وتعريفات.
+
+**التنسيق الإجباري:** HTML كامل مع جداول ملونة، عناوين واضحة، ولون لكل سؤال. لا تكتب أي نص خارج HTML.
+
+الطلب: ${userQuery}`;
+
+            const response = await aiClient.chat([{ role: 'user', content: 'قدم المحتوى بصيغة HTML نظيفة، ابدأ بـ <div> وأنه بـ </div>، لا تكتب شيئاً خارج HTML.' }], { model: 'gpt-4o' }, sysPrompt);
             const cleanedHTML = response.replace(/^```html|```$/gm, '').trim();
             setGeneratedContent(cleanedHTML);
             setChatHistory([]);

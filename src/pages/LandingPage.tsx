@@ -81,11 +81,11 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
 
             <div className="w-full max-w-7xl mx-auto px-6 py-8 z-10">
                 <header className="flex justify-between items-center mb-16 glass-widget px-8 py-4 rounded-full">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2ba396] to-[#238b7f] border border-[#2ba396]/30 flex items-center justify-center shadow-md">
-                            <span className="text-white font-black text-sm">S</span>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#2ba396] flex items-center justify-center shadow-md">
+                            <span className="text-white font-black text-sm tracking-widest">S</span>
                         </div>
-                        <span className="text-2xl font-display font-bold tracking-widest text-[var(--text-main)]">SOLVICA</span>
+                        <span className="text-2xl font-display font-black tracking-widest text-[var(--text-main)]">SOLVICA</span>
                     </div>
                     <nav className="hidden lg:flex items-center gap-8 text-sm font-bold text-[var(--text-muted)]">
                         <Link to="/features" className="hover:text-secondary transition-colors uppercase tracking-widest text-xs">المميزات</Link>
