@@ -11,7 +11,7 @@ import { Mic, StopCircle, Plus, MessageSquare, Trash2, Paperclip, Download, Brai
 
 export default function ChatPage() {
     const [messages, setMessages] = useState<AIChatMessage[]>([
-        { role: 'assistant', content: 'أهلاً بك في منصة الذكاء الفائق (BAZINGA). أنا الآن على دراية تامة في كل مستنداتك المرفقة والويب. اسألني أي شيء.' }
+        { role: 'assistant', content: '⚡ مرحباً بك في **Solvica** — رفيقك الذكي الأقوى! 🚀\n\nأنا على دراية تامة بجميع مستنداتك وكتبك وأسئلة السنوات السابقة. سواء أردت تلخيصاً أو حلاً لواجب أو شرحاً لمفهوم، أنا هنا دائماً. ✨\n\n**اسألني أي شيء!** 📚' }
     ]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -440,7 +440,7 @@ ${contextText ? `### 📚 مراجع متوفرة من ملفات الطالب (
             </head>
             <body>
                 <div class="header">
-                    <h1>محادثة الذكاء الفائق (BAZINGA)</h1>
+                    <h1>Solvica — المساعد الذكي</h1>
                     <p>تاريخ الاستخراج: ${new Date().toLocaleDateString('ar-SA')} | منصة Solvica</p>
                 </div>
                 <div class="space-y-6" dir="rtl">

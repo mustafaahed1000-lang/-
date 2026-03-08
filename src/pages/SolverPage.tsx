@@ -282,17 +282,17 @@ ${contextStr}
                 <div className="w-full max-w-6xl h-full flex flex-col gap-6 bg-[var(--bg-surface)] backdrop-blur-3xl rounded-[2.5rem] p-6 shadow-2xl border border-[var(--border-color)] transition-colors duration-300">
 
                     {/* Header */}
-                    <div className="bg-[var(--bg-background)] rounded-3xl p-8 shadow-sm border border-[var(--border-color)] flex items-center justify-between transition-colors duration-300">
+                    <div className="bg-[var(--bg-background)] rounded-3xl p-5 sm:p-8 shadow-sm border border-[var(--border-color)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-colors duration-300">
                         <div>
-                            <h1 className="text-3xl font-extrabold text-[var(--text-main)] mb-2 flex items-center gap-3">
-                                <Sparkles className="w-8 h-8 text-blue-500" />
+                            <h1 className="text-xl sm:text-3xl font-extrabold text-[var(--text-main)] mb-1 flex items-center gap-2">
+                                <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
                                 حلّال الأنشطة والواجبات
                             </h1>
-                            <p className="text-[var(--text-muted)] font-medium">قم برفع واجبك (صورة، ملف، نص) وحدد كتاب المادة وسيقوم المساعد بحله فوراً.</p>
+                            <p className="text-[var(--text-muted)] font-medium text-sm">قم برفع واجبك وحدد كتاب المادة وسيقوم المساعد بحله فوراً.</p>
                         </div>
-                        <button onClick={() => setIsHistoryOpen(true)} className="flex items-center gap-2 bg-[var(--widget-bg)] border border-[var(--border-color)] hover:border-blue-500 text-[var(--text-main)] px-4 py-2 rounded-xl transition-all font-bold">
+                        <button onClick={() => setIsHistoryOpen(true)} className="flex items-center gap-2 bg-[var(--widget-bg)] border border-[var(--border-color)] hover:border-blue-500 text-[var(--text-main)] px-4 py-2 rounded-xl transition-all font-bold text-sm whitespace-nowrap">
                             <History className="w-5 h-5" />
-                            السجل المحفوظ
+                            السجل
                         </button>
                     </div>
 

@@ -37,10 +37,10 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
                 <div className="flex items-center justify-between p-6 border-b border-[var(--border-color)]">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-[0_0_10px_rgba(255,60,172,0.4)]">
-                            <span className="font-display font-bold text-white text-xs tracking-widest">S</span>
+                        <div className="w-9 h-9 rounded-xl bg-[#2ba396] flex items-center justify-center shadow-md">
+                            <span className="font-display font-bold text-white text-sm tracking-widest">S</span>
                         </div>
-                        <span className="text-xl font-display font-bold tracking-widest text-gradient">SOLVICA</span>
+                        <span className="text-xl font-display font-black tracking-widest text-[var(--text-main)]">SOLVICA</span>
                     </div>
                     <button onClick={() => setIsOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                         <X className="w-5 h-5" />
@@ -53,7 +53,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                             key={index}
                             to={item.path}
                             onClick={() => setIsOpen(false)}
-                            className={({ isActive }) => `flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-all duration-300 ${isActive ? 'bg-primary/10 text-primary shadow-[0_0_20px_rgba(123,47,255,0.1)] border border-primary/20' : 'text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-main)]'}`}
+                            className={({ isActive }) => `flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-all duration-300 ${isActive ? 'bg-primary/10 text-primary shadow-[0_0_20px_rgba(123,47,255,0.1)] border border-primary/20 border-r-2 border-r-primary' : 'text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-main)]'}`}
                         >
                             {item.icon}
                             <span>{item.label}</span>
