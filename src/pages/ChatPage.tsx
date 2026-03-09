@@ -189,37 +189,83 @@ export default function ChatPage() {
                 return `[ملف: ${docName}] - ${c.text}`;
             }).join('\n---\n');
 
-            // --- V9 REAL WEB SEARCH (Tavily) ---
-            const TAVILY_API_KEY = "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"; // Fresh Working Key
+            // --- V11 ADVANCED REAL-TIME WEB SEARCH ---
+            const TAVILY_API_KEY = import.meta.env.VITE_TAVILY_API_KEY || "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";
             const isTemporalQuery = userText.match(/بحث|انترنت|جوجل|اخر|اخبار|معلومات|من هو|من هي|متى|أين|كيف|ما هو|ما هي|حرب|ضرب|هجوم|إسرائيل|اسرائيل|إيران|ايران|فلسطين|أخبار|عاجل|اليوم|الان|حالياً|مباراة|نتيجة|سعر|طقس|رئيس|وزير|what|who|when|where|how|news|latest|2024|2025|2026|امس|غدا/i);
 
             if (relevantChunks.length === 0 || isTemporalQuery) {
                 try {
-                    setMessages(prev => [...prev, { role: 'system', content: '⏳ يتم الآن سحب أحدث المعلومات من محرك بحث جوجل (Real-Time Search)...' }]);
-                    const osintRes = await fetch("https://api.tavily.com/search", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            api_key: TAVILY_API_KEY,
-                            query: originalUserText,
-                            search_depth: "advanced",
-                            include_answer: true,
-                            max_results: 3
-                        })
-                    });
-                    if (osintRes.ok) {
-                        const osintData = await osintRes.json();
-                        let webContext = "\n--- 🌐 ربط مباشر مع شبكة الإنترنت (أخبار ومعلومات حية) ---\n";
-                        webContext += "⚠️ **تحذير هام لك أيها الذكاء الاصطناعي:** بياناتك التدريبية قديمة وتتوقف في الماضي. نحن الآن في عام 2026. الملعومات المكتوبة أدناه مسحوبة من الإنترنت في هذه اللحظة وهي الحقيقة المطلقة. لا تناقشها أو تعتمد على ذاكرتك القديمة أبداً في هذا الموضوع.\n\n";
+                    setMessages(prev => [...prev, { role: 'system', content: '⏳ جاري البحث المباشر والعميق في الإنترنت...' }]);
+                    const encodedQ = encodeURIComponent(originalUserText);
+                    let webContext = "\n--- 🌐 بيانات حية ومباشرة من الإنترنت (الآن) ---\n";
+                    webContext += "⚠️ **أمر صارم للذكاء الاصطناعي:** أنت الآن في عام 2026. أي معلومات في ذاكرتك القديمة عن هذا الموضوع تعتبر لاغية. يجب عليك فقط قراءة الأخبار التالية المسحوبة للتو من الإنترنت وصياغة إجابة منها، مع ذكر المصادر.\n\n";
+                    let searchSucceeded = false;
 
-                        if (osintData.answer) webContext += `[إجابة جوجل المباشرة]: ${osintData.answer}\n\n`;
-                        webContext += osintData.results.map((r: any) => `[المصدر: ${r.url}]\nالعنوان: ${r.title}\nالتفاصيل: ${r.content}`).join('\n\n--- فصل النتائج ---\n\n');
-                        contextText += '\n\n' + webContext;
+                    // Strategy 1: Tavily Advanced Search
+                    if (TAVILY_API_KEY) {
+                        try {
+                            const r = await fetch("https://api.tavily.com/search", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    api_key: TAVILY_API_KEY,
+                                    query: originalUserText,
+                                    search_depth: "advanced",
+                                    include_answer: "advanced",
+                                    max_results: 5
+                                })
+                            });
+                            if (r.ok) {
+                                const d = await r.json();
+                                if (d.answer) webContext += `[الخلاصة المباشرة]: ${d.answer}\n\n`;
+                                if (d.results?.length) webContext += d.results.map((x: any) => `[المصدر: ${x.url}]\n${x.title}\n${x.content}`).join('\n\n');
+                                searchSucceeded = true;
+                            }
+                        } catch (err) { console.error("Tavily Error:", err); }
                     }
-                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ يتم الآن سحب')));
+
+                    // Strategy 2: DuckDuckGo Instant Answer (Free, no key)
+                    if (!searchSucceeded) {
+                        try {
+                            const ddgRes = await fetch(`https://api.duckduckgo.com/?q=${encodedQ}&format=json&no_html=1&skip_disambig=1`);
+                            if (ddgRes.ok) {
+                                const d = await ddgRes.json();
+                                if (d.AbstractText) { webContext += `[مصدر: ${d.AbstractURL || 'DuckDuckGo'}]\n${d.AbstractText}\n\n`; searchSucceeded = true; }
+                                if (d.RelatedTopics?.length) {
+                                    const topics = d.RelatedTopics.slice(0, 4).map((t: any) => t.Text || '').filter(Boolean).join('\n');
+                                    if (topics) { webContext += `[نتائج ذات صلة - DuckDuckGo]:\n${topics}\n\n`; searchSucceeded = true; }
+                                }
+                            }
+                        } catch (_) { /* fall through */ }
+                    }
+
+                    // Strategy 3: Wikipedia Arabic
+                    if (!searchSucceeded) {
+                        try {
+                            const wkRes = await fetch(`https://ar.wikipedia.org/api/rest_v1/page/summary/${encodedQ}`, { headers: { Accept: 'application/json' } });
+                            if (wkRes.ok) {
+                                const d = await wkRes.json();
+                                if (d.extract) { webContext += `[ويكيبيديا العربية: ${d.content_urls?.desktop?.page || ''}]\n${d.extract}\n\n`; searchSucceeded = true; }
+                            }
+                        } catch (_) { /* fall through */ }
+                    }
+
+                    // Strategy 4: Wikipedia English fallback
+                    if (!searchSucceeded) {
+                        try {
+                            const wkEnRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(userText)}`, { headers: { Accept: 'application/json' } });
+                            if (wkEnRes.ok) {
+                                const d = await wkEnRes.json();
+                                if (d.extract) { webContext += `[Wikipedia: ${d.content_urls?.desktop?.page || ''}]\n${d.extract}\n\n`; searchSucceeded = true; }
+                            }
+                        } catch (_) { /* fall through */ }
+                    }
+
+                    if (searchSucceeded) contextText += '\n\n' + webContext;
+                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ جاري البحث المباشر')));
                 } catch (e) {
                     console.error("Web Search Error", e);
-                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ يتم الآن سحب')));
+                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ جاري البحث المباشر')));
                 }
             }
 
@@ -300,9 +346,11 @@ export default function ChatPage() {
 ━━━━━━━━━━━━━━━━━━━━━━━━
 💡 قواعد عامة ومراجع مدمجة:
 ━━━━━━━━━━━━━━━━━━━━━━━━
-- تحدث باللغة العربية الفصحى بشكل صارم، وممنوع استخدام مفردات أو جمل إنجليزية مقحمة أو ترجمة إنجليزية غير مطلوبة وتجنب دمج اللغتين.
-- أنت مصمم للإجابة عن أي أسئلة عامة (قنوات يوتيوب، شخصيات عامة، إنترنت، تاريخ، الخ) براحة تامة، استخدم مخزونك المعرفي المباشر بحرية.
-- إلزامي وحتمي: إذا أجبت على سؤال بناءً على الملفات المرفقة أدناه، يجب عليك ذكر اسم الملف صراحة في نهاية إجابتك كمصدر.
+- تحدث باللغة العربية الفصحى السليمة حصراً.
+- ⚠️ أمر صارم جداً: يُمنع منعاً باتاً استخدام أو توليد رموز غريبة أو لغات أخرى (مثل الحروف الصينية 为了 أو كلمات مدمجة مثل يُrecommended). حافظ على نص عربي نقي وسليم 100%.
+- ⚠️ إلزامي وحتمي: يجب عليك دائماً إرفاق المصادر التي استعنت بها (سواء من بحث الإنترنت أو الملفات).
+- ⚠️ أمر قطعي بخصوص الروابط: عند كتابة رابط المصدر، يجب أن يكون رابطاً تشعبياً قابلاً للنقر بصيغة Markdown، مثال: [اسم الموقع](الرابط). لا تضع الروابط كنص عادي غير قابل للنقر أبداً.
+- أنت مصمم للإجابة عن أي أسئلة عامة (قنوات يوتيوب، شخصيات عامة، إنترنت، تاريخ، الخ) براحة تامة.
 - إذا لم تكن المعلومة موجودة في الملفات أو في بحث جوجل أو في مخزونك المعرفي، عندها فقط قل لا أعرف.
 - كن دقيقاً ومختصراً.
 
