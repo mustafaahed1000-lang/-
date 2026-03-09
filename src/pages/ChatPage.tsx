@@ -191,9 +191,11 @@ export default function ChatPage() {
 
             // --- V9 REAL WEB SEARCH (Tavily) ---
             const TAVILY_API_KEY = "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"; // Fresh Working Key
-            if (relevantChunks.length === 0 || userText.match(/بحث|انترنت|جوجل|اخر|اخبار|معلومات|من هو|من هي|متى|أين|كيف|ما هو|ما هي|حرب|ضرب|هجوم|إسرائيل|اسرائيل|إيران|ايران|فلسطين|أخبار|عاجل|اليوم|الان|حالياً|مباراة|نتيجة|سعر|طقس|رئيس|وزير|what|who|when|where|how|news|latest/i)) {
+            const isTemporalQuery = userText.match(/بحث|انترنت|جوجل|اخر|اخبار|معلومات|من هو|من هي|متى|أين|كيف|ما هو|ما هي|حرب|ضرب|هجوم|إسرائيل|اسرائيل|إيران|ايران|فلسطين|أخبار|عاجل|اليوم|الان|حالياً|مباراة|نتيجة|سعر|طقس|رئيس|وزير|what|who|when|where|how|news|latest|2024|2025|2026|امس|غدا/i);
+
+            if (relevantChunks.length === 0 || isTemporalQuery) {
                 try {
-                    setMessages(prev => [...prev, { role: 'system', content: '⏳ جاري البحث المباشر في محرك بحث جوجل...' }]);
+                    setMessages(prev => [...prev, { role: 'system', content: '⏳ يتم الآن سحب أحدث المعلومات من محرك بحث جوجل (Real-Time Search)...' }]);
                     const osintRes = await fetch("https://api.tavily.com/search", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -207,15 +209,17 @@ export default function ChatPage() {
                     });
                     if (osintRes.ok) {
                         const osintData = await osintRes.json();
-                        let webContext = "\n--- بيانات محرك بحث جوجل الحية (Google Search Data) ---\n";
-                        if (osintData.answer) webContext += `ملخص الويب الدقيق: ${osintData.answer}\n`;
-                        webContext += osintData.results.map((r: any) => `[رابط موثوق: ${r.url}] - ${r.title}\n${r.content}`).join('\n\n');
+                        let webContext = "\n--- 🌐 ربط مباشر مع شبكة الإنترنت (أخبار ومعلومات حية) ---\n";
+                        webContext += "⚠️ **تحذير هام لك أيها الذكاء الاصطناعي:** بياناتك التدريبية قديمة وتتوقف في الماضي. نحن الآن في عام 2026. الملعومات المكتوبة أدناه مسحوبة من الإنترنت في هذه اللحظة وهي الحقيقة المطلقة. لا تناقشها أو تعتمد على ذاكرتك القديمة أبداً في هذا الموضوع.\n\n";
+
+                        if (osintData.answer) webContext += `[إجابة جوجل المباشرة]: ${osintData.answer}\n\n`;
+                        webContext += osintData.results.map((r: any) => `[المصدر: ${r.url}]\nالعنوان: ${r.title}\nالتفاصيل: ${r.content}`).join('\n\n--- فصل النتائج ---\n\n');
                         contextText += '\n\n' + webContext;
                     }
-                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ جاري البحث')));
+                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ يتم الآن سحب')));
                 } catch (e) {
                     console.error("Web Search Error", e);
-                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ جاري البحث')));
+                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ يتم الآن سحب')));
                 }
             }
 

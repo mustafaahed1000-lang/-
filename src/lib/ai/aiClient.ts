@@ -250,9 +250,13 @@ class AIClient {
         let text = await res.text();
 
         // Warning filter just in case
-        if (text.includes("IMPORTANT NOTICE")) {
-            text = text.replace(/⚠️ IMPORTANT NOTICE ⚠️[\s\S]*?continue to work normally\./gi, "");
-            text = text.trim();
+        if (text.includes("IMPORTANT NOTICE") || text.includes("pollinations.ai")) {
+            text = text.replace(/⚠️?\s*IMPORTANT NOTICE\s*⚠️?[\s\S]*?(continue to work normally\.|latest models\.)/gi, "").trim();
+            text = text.replace(/The Pollinations legacy text API is being deprecated[\s\S]*?normally\./gi, "").trim();
+            if (text.includes("IMPORTANT NOTICE")) {
+                const parts = text.split(/⚠️?\s*IMPORTANT NOTICE\s*⚠️?/);
+                text = parts.length > 1 ? parts[parts.length - 1].replace(/[\s\S]*?(continue to work normally\.|latest models\.)/, "").trim() : parts[0];
+            }
         }
         if (!text || text.length < 3) throw new Error("Pollinations returned empty");
         return text;
@@ -410,13 +414,14 @@ class AIClient {
                 if (result && result.trim().length > 0) {
                     // INDESTRUCTIBLE Global Warning Filter
                     if (result.includes("IMPORTANT NOTICE") || result.includes("pollinations.ai")) {
-                        // Nuke the exact warning block using regex
+                        // Nuke everything from the start of the warning to the end of the paragraph
                         result = result.replace(/⚠️?\s*IMPORTANT NOTICE\s*⚠️?[\s\S]*?(continue to work normally\.|latest models\.)/gi, "").trim();
-                        // Nuke English text if the AI shouldn't be speaking English anyway in this context
                         result = result.replace(/The Pollinations legacy text API is being deprecated[\s\S]*?normally\./gi, "").trim();
-                        // Fallback nuke
-                        if (result.includes("enter.pollinations.ai")) {
-                            result = result.split("⚠️ IMPORTANT NOTICE ⚠️")[0] || result;
+
+                        // If any traces remain, just split and take what comes before or after
+                        if (result.includes("IMPORTANT NOTICE")) {
+                            const parts = result.split(/⚠️?\s*IMPORTANT NOTICE\s*⚠️?/);
+                            result = parts.length > 1 ? parts[parts.length - 1].replace(/[\s\S]*?(continue to work normally\.|latest models\.)/, "").trim() : parts[0];
                         }
                     }
                     if (result.length === 0) continue;

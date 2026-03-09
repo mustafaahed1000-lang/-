@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyCX-pf42zk0oH5jg5-iJJCyNt3_wBKpUXI";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY_2 || import.meta.env.VITE_GEMINI_API_KEY;
 
 export interface VectorChunk {
     id: string;
