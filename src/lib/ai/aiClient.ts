@@ -27,11 +27,46 @@ const BAZINGA_SYSTEM_PROMPT = `أنت المساعد الأكاديمي الفا
 أسلوب الرد: نسق إجابتك باستخدام Markdown لتبدو رائعة ومنظمة جداً.`;
 
 // ═══════════════════════════════════════════════════════
+// AI MEMORY SYSTEM — localStorage-based learning
+// ═══════════════════════════════════════════════════════
+const MEMORY_KEY = 'solvica_ai_memory';
+export interface AIMemoryEntry { type: 'correction' | 'feedback'; question: string; wrong?: string; correct: string; timestamp: number; }
+export const aiMemory = {
+    getAll: (): AIMemoryEntry[] => { try { return JSON.parse(localStorage.getItem(MEMORY_KEY) || '[]'); } catch { return []; } },
+    add: (entry: Omit<AIMemoryEntry, 'timestamp'>) => {
+        const all = aiMemory.getAll();
+        all.unshift({ ...entry, timestamp: Date.now() });
+        localStorage.setItem(MEMORY_KEY, JSON.stringify(all.slice(0, 50))); // keep last 50
+    },
+    getContextString: (): string => {
+        const entries = aiMemory.getAll().slice(0, 10);
+        if (entries.length === 0) return '';
+        return '\n\n### 🧠 ذاكرة التعلم من الأخطاء السابقة (يجب مراعاتها):\n' +
+            entries.map(e => e.type === 'correction'
+                ? `- ❌ كنت مخطئاً عندما قلت: "${e.wrong?.slice(0, 80)}" — ✅ الصواب: "${e.correct.slice(0, 80)}"`
+                : `- 📝 ملاحظة: "${e.correct.slice(0, 100)}"`
+            ).join('\n');
+    }
+};
+
+
+// ═══════════════════════════════════════════════════════
 // API KEYS (Multi-Account Rotation)
 // ═══════════════════════════════════════════════════════
 const GEMINI_KEY_1 = import.meta.env.VITE_GEMINI_API_KEY || "";
 const GEMINI_KEY_2 = import.meta.env.VITE_GEMINI_API_KEY_2 || "";
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
+// Groq key rotation - 3 keys for maximum uptime
+const GROQ_KEYS = [
+    import.meta.env.VITE_GROQ_API_KEY || "",
+    import.meta.env.VITE_GROQ_API_KEY_2 || "",
+    import.meta.env.VITE_GROQ_API_KEY_3 || "",
+].filter(k => k.length > 0);
+let groqKeyIndex = 0;
+const getGroqKey = () => {
+    const key = GROQ_KEYS[groqKeyIndex % GROQ_KEYS.length];
+    groqKeyIndex = (groqKeyIndex + 1) % GROQ_KEYS.length;
+    return key;
+};
 const CF_ACCOUNT_ID = import.meta.env.VITE_CF_ACCOUNT_ID || "d512b57e197e6a523bf0a69b6b1b0dac";
 const CF_API_TOKEN_1 = import.meta.env.VITE_CF_API_TOKEN_1 || "";
 const CF_API_TOKEN_2 = import.meta.env.VITE_CF_API_TOKEN_2 || "";
@@ -53,7 +88,8 @@ class AIClient {
             hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true
         });
         const currentYear = now.getFullYear();
-        return `${baseInstruction || BAZINGA_SYSTEM_PROMPT}\n\n*** معلومات النظام والإطار الزمني ***\n- الوقت والتاريخ المباشر الآن: ${deviceTime}\n- أنت تعيش وتعمل في عام ${currentYear}.\n- أنت متصل بشبكة الإنترنت (عبر نظام بحث مساعد) وتستطيع توفير أحدث المعلومات، وإياك أن تعتذر بدعوى أن معلوماتك تنتهي في عام 2023 أو 2024 أو 2025. إذا طلب منك أحدث الأخبار، استخدم استنتاجك ومعلوماتك المتاحة أو ابدأ بالإجابة بثقة دون ذكر تاريخ القطع الخاص بك.`;
+        const memoryContext = aiMemory.getContextString();
+        return `${baseInstruction || BAZINGA_SYSTEM_PROMPT}\n\n*** معلومات النظام والإطار الزمني ***\n- الوقت والتاريخ المباشر الآن: ${deviceTime}\n- أنت تعيش وتعمل في عام ${currentYear}.\n- أنت متصل بشبكة الإنترنت (عبر نظام بحث مساعد) وتستطيع توفير أحدث المعلومات، وإياك أن تعتذر بدعوى أن معلوماتك تنتهي في عام 2023 أو 2024 أو 2025. إذا طلب منك أحدث الأخبار، استخدم استنتاجك ومعلوماتك المتاحة أو ابدأ بالإجابة بثقة دون ذكر تاريخ القطع الخاص بك.${memoryContext}`;
     }
 
     private buildOpenAIMessages(messages: AIChatMessage[], sysPrompt: string): any[] {
@@ -158,7 +194,7 @@ class AIClient {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${GROQ_API_KEY}`,
+                "Authorization": `Bearer ${getGroqKey()}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({

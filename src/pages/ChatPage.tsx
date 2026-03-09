@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { aiClient } from '../lib/ai/aiClient';
 import type { AIChatMessage } from '../lib/ai/aiClient';
+import { aiMemory } from '../lib/ai/aiClient';
 import { globalVectorStore } from '../lib/rag/vectorStore';
 import { db } from '../lib/db/database';
 import AppLayout from '../layouts/AppLayout';
@@ -29,6 +30,9 @@ export default function ChatPage() {
 
     // Added document parsing for Chat
     const [attachedFileText, setAttachedFileText] = useState<string | null>(null);
+    // AI memory feedback state
+    const [feedbackModal, setFeedbackModal] = useState<{ msgIdx: number, content: string } | null>(null);
+    const [feedbackText, setFeedbackText] = useState('');
 
     useEffect(() => {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -558,10 +562,27 @@ ${contextText ? `### 📚 مراجع متوفرة من ملفات الطالب (
                                         <div className="prose dark:prose-invert max-w-none break-words prose-p:leading-relaxed prose-headings:text-[var(--text-main)] prose-strong:text-[var(--text-main)] text-[var(--text-main)] pb-2 text-sm md:text-base">
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                                         </div>
+                                        {msg.role === 'assistant' && msg.content.length > 20 && (
+                                            <button onClick={() => { setFeedbackModal({ msgIdx: idx, content: msg.content }); setFeedbackText(''); }} className="mt-2 text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors flex items-center gap-1" title="الإجابة خاطئة؟ صحح">
+                                                👎 إجابة خاطئة؟ صحح
+                                            </button>
+                                        )}
                                     </div>
-
                                 </div>
                             ))}
+                            {feedbackModal && (
+                                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4" dir="rtl">
+                                    <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                                        <h3 className="text-lg font-bold text-[var(--text-main)] mb-2">🧠 تصحيح للذاكرة الذكية</h3>
+                                        <p className="text-xs text-[var(--text-muted)] mb-4">ما الجواب الصحيح؟ سيتذكره الذكاء الاصطناعي في كل المحادثات القادمة.</p>
+                                        <textarea className="w-full bg-[var(--bg-background)] border border-[var(--border-color)] rounded-xl p-3 text-[var(--text-main)] text-sm resize-none h-24 outline-none focus:border-[#2ba396]" placeholder="اكتب الجواب الصحيح..." value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
+                                        <div className="flex gap-3 mt-4">
+                                            <button onClick={() => { if (feedbackText.trim()) { aiMemory.add({ type: 'correction', question: messages[feedbackModal.msgIdx - 1]?.content || '', wrong: feedbackModal.content.slice(0, 150), correct: feedbackText.trim() }); } setFeedbackModal(null); }} className="flex-1 bg-[#2ba396] text-white font-bold py-2 rounded-xl hover:bg-[#238b7f] transition-colors">✅ حفظ التصحيح</button>
+                                            <button onClick={() => setFeedbackModal(null)} className="flex-1 bg-[var(--bg-background)] border border-[var(--border-color)] text-[var(--text-muted)] font-bold py-2 rounded-xl">إلغاء</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             {isTyping && messages[messages.length - 1]?.content !== '...' && (
                                 <div className="flex gap-4 items-end max-w-[85%] ml-auto">
                                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2ba396] to-teal-700 flex items-center justify-center shrink-0 mb-1 shadow-md border border-[#238b7f]">
