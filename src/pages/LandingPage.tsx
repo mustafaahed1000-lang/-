@@ -82,10 +82,10 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
             <div className="w-full max-w-7xl mx-auto px-6 py-8 z-10">
                 <header className="flex justify-between items-center mb-16 glass-widget px-8 py-4 rounded-full">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#2ba396] flex items-center justify-center shadow-md">
-                            <span className="text-white font-black text-sm tracking-widest">S</span>
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8e2de2] to-[#f000ff] flex items-center justify-center shadow-md">
+                            <span className="text-white font-black text-lg tracking-widest">S</span>
                         </div>
-                        <span className="text-2xl font-display font-black tracking-widest text-[var(--text-main)]">SOLVICA</span>
+                        <span className="text-2xl font-display font-black tracking-widest bg-gradient-to-r from-[#00d2ff] via-[#8e2de2] to-[#f000ff] text-transparent bg-clip-text">SOLVICA</span>
                     </div>
                     <nav className="hidden lg:flex items-center gap-8 text-sm font-bold text-[var(--text-muted)]">
                         <Link to="/features" className="hover:text-secondary transition-colors uppercase tracking-widest text-xs">المميزات</Link>
@@ -130,8 +130,8 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
                             className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl w-full max-w-md shadow-2xl p-8"
                         >
                             <div className="text-center mb-6">
-                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#2ba396] to-[#238b7f] flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                    <span className="text-white font-black text-2xl">S</span>
+                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#8e2de2] to-[#f000ff] flex items-center justify-center mx-auto mb-4 shadow-lg drop-shadow-[0_0_15px_rgba(142,45,226,0.5)]">
+                                    <span className="text-white font-black text-3xl">S</span>
                                 </div>
                                 <h2 className="text-2xl font-black text-[var(--text-main)]">{isRegister ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}</h2>
                                 <p className="text-sm text-[var(--text-muted)] mt-2">{isRegister ? 'سجل حسابك وابدأ رحلتك الدراسية' : 'أدخل بياناتك للعودة لحسابك'}</p>
@@ -224,7 +224,7 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
                             className="text-3xl sm:text-5xl md:text-7xl font-black mb-4 sm:mb-6 leading-[1.2]"
                         >
                             ارتقِ بدراستك مع <br />
-                            <span className="text-gradient font-display text-4xl sm:text-6xl md:text-8xl mt-1 block tracking-widest">SOLVICA</span>
+                            <span className="bg-gradient-to-r from-[#00d2ff] via-[#8e2de2] to-[#f000ff] text-transparent bg-clip-text font-display text-4xl sm:text-6xl md:text-8xl mt-1 block tracking-widest drop-shadow-sm">SOLVICA</span>
                         </motion.h1>
 
                         <motion.p

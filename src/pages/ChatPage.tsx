@@ -190,8 +190,8 @@ export default function ChatPage() {
             }).join('\n---\n');
 
             // --- V9 REAL WEB SEARCH (Tavily) ---
-            const TAVILY_API_KEY = "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";
-            if (relevantChunks.length === 0 || userText.match(/بحث|انترنت|جوجل|اخر|اخبار|معلومات|من هو|من هي|متى|أين|كيف|ما هو|ما هي|حرب|ضرب|هجوم|اسرائيل|فلسطين|iran|ايران|أخبار|عاجل|اليوم|الان|حالياً|مباراة|نتيجة|سعر|طقس|رئيس|وزير|what|who|when|where|how|news|latest/i)) {
+            const TAVILY_API_KEY = "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"; // Fresh Working Key
+            if (relevantChunks.length === 0 || userText.match(/بحث|انترنت|جوجل|اخر|اخبار|معلومات|من هو|من هي|متى|أين|كيف|ما هو|ما هي|حرب|ضرب|هجوم|إسرائيل|اسرائيل|إيران|ايران|فلسطين|أخبار|عاجل|اليوم|الان|حالياً|مباراة|نتيجة|سعر|طقس|رئيس|وزير|what|who|when|where|how|news|latest/i)) {
                 try {
                     setMessages(prev => [...prev, { role: 'system', content: '⏳ جاري البحث المباشر في محرك بحث جوجل...' }]);
                     const osintRes = await fetch("https://api.tavily.com/search", {

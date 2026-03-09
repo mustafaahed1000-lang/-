@@ -37,10 +37,10 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
                 <div className="flex items-center justify-between p-6 border-b border-[var(--border-color)]">
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-[#2ba396] flex items-center justify-center shadow-md">
-                            <span className="font-display font-bold text-white text-sm tracking-widest">S</span>
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8e2de2] to-[#f000ff] flex items-center justify-center shadow-md drop-shadow-[0_0_8px_rgba(142,45,226,0.3)]">
+                            <span className="font-display font-bold text-white text-base tracking-widest">S</span>
                         </div>
-                        <span className="text-xl font-display font-black tracking-widest text-[var(--text-main)]">SOLVICA</span>
+                        <span className="text-xl font-display font-black tracking-widest bg-gradient-to-r from-[#00d2ff] via-[#8e2de2] to-[#f000ff] text-transparent bg-clip-text">SOLVICA</span>
                     </div>
                     <button onClick={() => setIsOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                         <X className="w-5 h-5" />
