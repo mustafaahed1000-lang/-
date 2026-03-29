@@ -1,143 +1,269 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { aiClient } from '../lib/ai/aiClient';
-import type { AIChatMessage } from '../lib/ai/aiClient';
-import { aiMemory } from '../lib/ai/aiClient';
-import { globalVectorStore } from '../lib/rag/vectorStore';
-import { db } from '../lib/db/database';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { aiClient, type AIChatMessage } from '../lib/ai/aiClient';
+import { Send, Trash2, Paperclip, MessageSquare, Download, Brain, FileText, X, Copy, BookOpen, Mic, StopCircle, Zap } from 'lucide-react';
+import { exportToPDF } from '../lib/utils/pdfExport';
+import { db, type ChatSession } from '../lib/db/database';
 import AppLayout from '../layouts/AppLayout';
-import { processDocument } from '../lib/rag/documentParser';
-import { Mic, StopCircle, Plus, MessageSquare, Trash2, Paperclip, Download, Brain } from 'lucide-react';
 
 export default function ChatPage() {
-    const [messages, setMessages] = useState<AIChatMessage[]>([
-        { role: 'assistant', content: '⚡ مرحباً بك في **Solvica** — رفيقك الذكي الأقوى! 🚀\n\nأنا على دراية تامة بجميع مستنداتك وكتبك وأسئلة السنوات السابقة. سواء أردت تلخيصاً أو حلاً لواجب أو شرحاً لمفهوم، أنا هنا دائماً. ✨\n\n**اسألني أي شيء!** 📚' }
-    ]);
+    const [messages, setMessages] = useState<AIChatMessage[]>([]);
     const [input, setInput] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
-    const [sessionId, setSessionId] = useState<string>(crypto.randomUUID());
-    const [chatHistoryList, setChatHistoryList] = useState<any[]>([]);
+    const [sessionId, setSessionId] = useState<string>(`session_${Date.now()}`);
     const [savedDocs, setSavedDocs] = useState<any[]>([]);
-    const [selectedModel, setSelectedModel] = useState<string>('gpt-4o');
-
+    const [selectedContextDocId, setSelectedContextDocId] = useState<string>("");
+    const [isTyping, setIsTyping] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
-    const imageInputRef = useRef<HTMLInputElement>(null);
+    const [chatHistoryList, setChatHistoryList] = useState<any[]>([]);
+
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    const [isRecording, setIsRecording] = useState(false);
-    const recognitionRef = useRef<any>(null);
-
-    // Added document parsing for Chat
     const [attachedFileText, setAttachedFileText] = useState<string | null>(null);
-    // AI memory feedback state
-    const [feedbackModal, setFeedbackModal] = useState<{ msgIdx: number, content: string } | null>(null);
-    const [feedbackText, setFeedbackText] = useState('');
+    const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
+    const [isListening, setIsListening] = useState(false);
 
     useEffect(() => {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'ar-SA';
-            recognition.onresult = (event: any) => {
-                let finalTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
-                }
-                if (finalTranscript) setInput(prev => prev + ' ' + finalTranscript);
-            };
-            recognition.onerror = () => setIsRecording(false);
-            recognition.onend = () => setIsRecording(false);
-            recognitionRef.current = recognition;
+        db.getAllDocuments().then(setSavedDocs);
+        db.getAllChatSessions().then(setChatHistoryList);
+        
+        // Intercept Pollinations PK from hash
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const apiKey = hashParams.get("api_key");
+        if (apiKey) {
+            localStorage.setItem("pollinations_pk", apiKey);
+            localStorage.setItem("pk", apiKey);
+            window.history.replaceState(null, "", window.location.pathname);
+            setTimeout(() => alert("✅ تم ربط حسابك وتفعيل خدمة الرؤية بنجاح!"), 500);
+        }
+
+        const lastSessionId = localStorage.getItem('solvica_last_session');
+        if (lastSessionId) {
+            loadSession(lastSessionId);
+        } else {
+            setGreeting();
         }
     }, []);
 
-    const toggleRecording = () => {
-        if (isRecording) {
-            recognitionRef.current?.stop();
-            setIsRecording(false);
-        } else {
-            setInput('');
-            recognitionRef.current?.start();
-            setIsRecording(true);
-        }
+    const setGreeting = () => {
+        const helloMsg: AIChatMessage = { 
+            role: 'assistant', 
+            content: "أهلاً بك! أنا Solvica المساعد الأكاديمي الذكي. كيف يمكنني مساعدتك في دراستك اليوم؟ يمكنك سؤالي عن مراجعة التخصصات، حل المسائل، أو تحليل الصور والملفات! 🚀🧪" 
+        };
+        setMessages([helloMsg]);
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [messages, isTyping]);
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         if (file.type.startsWith('image/')) {
+            // ✅ Validate format: JPG, PNG, WebP, GIF only
+            const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+            if (!allowedImageTypes.includes(file.type)) {
+                alert('❌ نوع الصورة غير مدعوم. الأنواع المقبولة: JPG, PNG, WebP, GIF');
+                return;
+            }
+            // ✅ 10MB size limit
+            if (file.size > 10 * 1024 * 1024) {
+                alert('❌ حجم الصورة يتجاوز 10MB. الرجاء اختيار صورة أصغر.');
+                return;
+            }
+
+            // ✅ Check PK before reading the image
+            const pk = localStorage.getItem('pk');
+            if (!pk || pk === 'pk_kn9KoGgYC7i5Sk6P' || pk === 'no-login-required') {
+                const redirectUrl = encodeURIComponent(window.location.href);
+                const loginUrl = `https://enter.pollinations.ai/authorize?redirect_url=${redirectUrl}&permissions=profile,balance,usage,offline_access&app_key=pk_kn9KoGgYC7i5Sk6P&expiry=never`;
+                const errorText = `⚠️ أهلاً يا صديقي، خوادم تحليل الصور المجانية المفتوحة تواجه ضغطاً عالياً حالياً.\n\n💡 لكي تتمكن من رفع وقراءة الصور والملفات فوراً وبلا رسائل خطأ، يرجى التكرم **[بتسجيل الدخول بأمان عبر حسابك في جوجل من هنا](${loginUrl})**! 🚀 مجرد ضغطة واحدة وتصبح الميزات مجانية للأبد وتسري لك حصتك الشخصية الكاملة!`;
+                
+                // Show message as Solvica
+                setMessages(prev => [...prev, { role: 'assistant', content: errorText }]);
+                e.target.value = ''; // Reset file input
+                return; 
+            }
+
+            // ✅ FileReader → Base64 (no external libraries)
             const reader = new FileReader();
-            reader.onload = (e) => setSelectedImage(e.target?.result as string);
-            reader.readAsDataURL(file);
-            setAttachedFileText(null);
+            reader.onload = (ev) => setSelectedImage(ev.target?.result as string);
+            reader.readAsDataURL(file); // Result: "data:image/jpeg;base64,/9j/..."
         } else {
-            // Document (PDF/DOCX/TXT)
-            setSelectedImage(null);
-            setMessages(prev => [...prev, { role: 'system', content: `⏳ جاري تحليل ملف '${file.name}' واستخراج النصوص المقروءة للذكاء الاصطناعي...` }]);
-            try {
-                const parsed = await processDocument(file);
-                const fullText = typeof parsed.chunks[0] === 'string' ? parsed.chunks.join('\n') : parsed.chunks.map((c: any) => c.text).join('\n');
-                setAttachedFileText(`=== محتوى ملف '${file.name}' المرفق ===\n${fullText}`);
-                setMessages(prev => prev.filter(m => !m.content.includes('⏳ جاري تحليل ملف')).concat([{ role: 'system', content: `✅ تم إرفاق وتحليل نص ملف '${file.name}' بنجاح! يمكنك سؤالي عنه الآن.` }]));
-            } catch (err: any) {
-                console.error(err);
-                setMessages(prev => prev.filter(m => !m.content.includes('⏳ جاري تحليل ملف')).concat([{ role: 'system', content: `❌ فشل تحليل الملف: ${err.message}` }]));
-            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                setAttachedFileText(ev.target?.result as string);
+                setAttachedFileName(file.name);
+            };
+            reader.readAsText(file);
         }
-        // reset input
-        if (imageInputRef.current) imageInputRef.current.value = '';
     };
 
-    useEffect(() => {
-        const loadContexts = async () => {
-            const docs = await db.getAllDocuments();
-            setSavedDocs(docs);
-            if (docs.length > 0) {
-                for (const doc of docs) await globalVectorStore.addDocumentChunks(doc.id, doc.chunks);
-            }
 
-            const history = await db.getAllChatSessions();
-            setChatHistoryList(history);
+    const sendMessage = async () => {
+        if (!input.trim() && !selectedImage) return;
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const explicitSessionId = urlParams.get('session');
-            if (explicitSessionId) {
-                const session = await db.getChatSession(explicitSessionId);
-                if (session && session.messages.length > 0) {
-                    setSessionId(explicitSessionId);
-                    setMessages(session.messages);
-                }
-            } else if (history.length > 0) {
-                setSessionId(history[0].id);
-                setMessages(history[0].messages);
-            }
+        const userText = input;
+        const userImage = selectedImage;
+        const currentAttachedText = attachedFileText;
+        const currentAttachedName = attachedFileName;
 
-            const autoFile = urlParams.get('file');
-            if (autoFile) {
-                window.history.replaceState({}, '', '/chat');
-            }
+        const userMsg: AIChatMessage = { 
+            role: 'user', 
+            content: userText, 
+            image: userImage || undefined,
+            attachmentName: currentAttachedName || undefined
         };
-        loadContexts();
-    }, []);
 
-    useEffect(() => {
-        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }, [messages]);
+        const newMessages: AIChatMessage[] = [...messages, userMsg];
 
-    const startNewChat = () => {
-        setSessionId(crypto.randomUUID());
-        setMessages([{ role: 'assistant', content: 'أهلاً بك! محادثة جديدة. اسألني عن أي شيء.' }]);
+        setMessages(newMessages);
+        setInput('');
+        setSelectedImage(null);
+        setAttachedFileText(null);
+        setAttachedFileName(null);
+        setIsTyping(true);
+
+        try {
+
+            // 📚 RAG Context Gathering
+            let contextText = "";
+            
+            if (selectedContextDocId) {
+                if (selectedContextDocId.startsWith("subject:")) {
+                    const subject = selectedContextDocId.replace("subject:", "");
+                    const docs = savedDocs.filter(d => d.subjectName === subject);
+                    contextText = docs.flatMap(d => d.chunks).map(c => c.text || c).join('\n---\n').substring(0, 800000);
+                } else {
+                    const doc = savedDocs.find(d => d.id === selectedContextDocId);
+                    if (doc) {
+                        contextText = doc.chunks.map((c: any) => c.text || c).join('\n---\n').substring(0, 800000);
+                    }
+                }
+            } else if (!userImage && userText.length > 5) {
+                // Auto-RAG for general queries (Send full readable texts up to limit)
+                const allChunks = savedDocs.flatMap(d => d.chunks);
+                if (allChunks.length > 0) {
+                    contextText = allChunks.map(c => c.text || c).join('\n---\n').substring(0, 800000);
+                }
+            }
+
+            if (currentAttachedText) {
+                contextText = `[مستند إضافي مرفق: ${currentAttachedName}]\n${currentAttachedText}\n\n${contextText}`;
+            }
+
+            let webSearchContext = "";
+            if (!selectedContextDocId && !userImage) {
+                try {
+                    const TAVILY_API_KEY = "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";
+                    const webRes = await fetch("https://api.tavily.com/search", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ api_key: TAVILY_API_KEY, query: userText.substring(0, 150), search_depth: "basic", max_results: 3 })
+                    });
+                    if (webRes.ok) {
+                        const data = await webRes.json();
+                        webSearchContext = data.results.map((r: any) => `[موقع: ${r.title}] (${r.url})\n${r.content}`).join('\\n\\n');
+                    }
+                } catch (e) { console.error("Web Search Error", e); }
+            }
+
+            const systemInstruction = `أنت بروفسور جامعي ومحرك ذكاء اصطناعي بحثي أكاديمي (Solvica V13). وظيفتك الإجابة على استفسارات الطالب بأسلوب ذكي، سريع والمساعدة في دراسة المجلدات والملفات المرفقة إن وجدت. 
+
+--- قوانين المحادثة والحل (دقة 100% - استجابة سريعة جداً) ---
+1. الأسئلة التفاعلية والترحيب: إذا قال الطالب "مرحبا" أو "كيفك" أو "من أنت" أو طرح سؤالاً يومياً، أجب برد إنساني طبيعي وقصير جداً جداً وبسرعة (مثلاً: أهلاً بك! أنا بخير، كيف أساعدك؟) ولا تسترسل أبداً.
+2. صانعك ومطورك: إذا سألك أي شخص من صنعك، من طورك، أو من برمجك، أجب فوراً وبفخر: "مُطوّري وصانعي هو الخبير مصطفى! 👑✨"
+3. الإجابات المختصرة كقاعدة عامة: في المحادثة، اجعل إجاباتك الأكاديمية واضحة ومباشرة وموجزة، ولا تشرح بالتفصيل الممل إلا إذا طلب الطالب ذلك نصاً.
+4. حالة "المجلد المحدد": يُمنع منعاً باتاً الإجابة من خارج المجلد المحدد. ركز حصراً على محتواه.
+5. الروابط الحقيقية فقط: يُمنع اختراع روابط يوتيوب (YouTube) أو غيرها. استخدم فقط الروابط الموجودة أسفل التلقين.
+6. المباشرة والثقة: ممنوع الشك في الإجابات الأكاديمية. لا تستخدم (أعتقد، ربما).
+7. التنسيق: Markdown و KaTeX حصرياً للمعادلات ($ للنص، $$ للمستقلة). استخدم الجداول والاقتباسات متى لزم الأمر.`;
+
+            let finalSysPrompt = systemInstruction;
+            if (contextText) finalSysPrompt += '\n\n### 📚 نصوص المجلد والمراجع (ادرسها وحللها بدقة 100% قبل الإجابة):\n' + contextText;
+            if (webSearchContext) finalSysPrompt += '\n\n### 🌍 نتائج بحث الويب الحية (استخرج منها الروابط والمعلومات الأكيدة ولا تخترع روابط غير موجودة هنا):\n' + webSearchContext;
+
+            const chatHistory: AIChatMessage[] = newMessages.map(m => ({
+                role: (m.role === 'user' ? 'user' : 'model') as Exclude<AIChatMessage['role'], 'assistant' | 'system'>,
+                content: m.content,
+                image: m.image
+            }));
+
+            let finalAIText = "";
+            await aiClient.streamChat([
+                { role: 'system', content: finalSysPrompt },
+                ...chatHistory
+            ], {
+                onChunk: (chunk) => {
+                    finalAIText += chunk;
+                    setMessages(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.role === 'assistant') {
+                            return [...prev.slice(0, -1), { ...last, content: last.content + chunk }];
+                        }
+                        const newAssistantMsg: AIChatMessage = { role: 'assistant', content: chunk };
+                        return [...prev, newAssistantMsg];
+                    });
+                },
+                onComplete: (fullText) => {
+                    finalAIText = fullText || finalAIText;
+                }
+            });
+
+            // Save session with complete AI response
+            const finalAssistantMsg: AIChatMessage = { role: 'assistant', content: finalAIText };
+            
+            const sessionMessages = finalAIText.trim() ? [...newMessages, finalAssistantMsg] : [...newMessages];
+            const session: ChatSession = {
+                id: sessionId,
+                title: userText.substring(0, 30) || "محادثة جديدة",
+                messages: sessionMessages,
+                updatedAt: Date.now()
+            };
+            await db.saveChatSession(session);
+            
+            const updatedHistory = await db.getAllChatSessions();
+            setChatHistoryList(updatedHistory);
+            localStorage.setItem('solvica_last_session', sessionId);
+
+        } catch (error: any) {
+            console.error(error);
+            let errorText = "آسف، يبدو أن هناك خطأ في الاتصال، لكنني عدت للعمل للتو! يرجى إعادة المحاولة.";
+            if (error?.message === "POLLINATIONS_LOGIN_REQUIRED") {
+                const redirectUrl = encodeURIComponent(window.location.href);
+                const loginUrl = `https://enter.pollinations.ai/authorize?redirect_url=${redirectUrl}&permissions=profile,balance,usage,offline_access&app_key=pk_kn9KoGgYC7i5Sk6P&expiry=never`;
+                errorText = `⚠️ عذراً يا صديقي، خوادم تحليل الصور تواجه ضغطاً عالياً ولم أتمكن من قراءة صورتك.\n\n💡 لكي أتمكن من قراءة وفهم الصور والملفات مجاناً بدون انقطاع وبلا حدود تقريباً، يرجى التكرم **[بالضغط هنا لتفعيل حسابك المجاني بأمان عبر جوجل](${loginUrl})**! 🚀 مجرد ضغطة واحدة وتصبح خدمتك للرؤية مجانية للأبد!`;
+            }
+
+            const errorMsg: AIChatMessage = { 
+                role: 'assistant', 
+                content: errorText 
+            };
+            setMessages(prev => {
+                const cleanPrev = prev.filter(m => m.role === 'user' || m.content?.trim());
+                return [...cleanPrev, errorMsg];
+            });
+        } finally {
+            setIsTyping(false);
+        }
     };
 
-    const loadSession = async (id: string) => {
+    async function loadSession(id: string) {
         const session = await db.getChatSession(id);
         if (session) {
-            setSessionId(id);
             setMessages(session.messages);
+            setSessionId(id);
+            localStorage.setItem('solvica_last_session', id);
         }
     };
 
@@ -146,550 +272,417 @@ export default function ChatPage() {
         await db.deleteChatSession(id);
         const updated = await db.getAllChatSessions();
         setChatHistoryList(updated);
-        if (sessionId === id) startNewChat();
-    };
-
-    const sendMessage = async () => {
-        if (!input.trim() && !selectedImage && !attachedFileText) return;
-
-        const originalUserText = input.trim();
-        // Insert file text transparently if attached
-        const userText = attachedFileText ? `${originalUserText}\n\n${attachedFileText}` : originalUserText;
-        const userImg = selectedImage;
-
-        setInput('');
-        setSelectedImage(null);
-        setAttachedFileText(null);
-
-        // UI shows only their typed prompt
-        const displayUserMsg: AIChatMessage = { role: 'user', content: originalUserText || "قم بتحليل المرفق والإجابة.", image: userImg || undefined };
-        // Real logic array gets full text
-        const logicUserMsg: AIChatMessage = { role: 'user', content: userText || "قم بتحليل المرفق والإجابة.", image: userImg || undefined };
-
-        const newDisplayMessages = [...messages.filter(m => m.role !== 'system'), displayUserMsg];
-        const newLogicMessages = [...messages.filter(m => m.role !== 'system'), logicUserMsg];
-
-        setMessages(newDisplayMessages);
-        setIsTyping(true);
-
-        const title = userText.substring(0, 30) || 'محادثة';
-        setChatHistoryList(prev => {
-            const existing = prev.find(s => s.id === sessionId);
-            if (existing) {
-                return prev.map(s => s.id === sessionId ? { ...s, title: existing.title === 'محادثة جديدة' ? title : existing.title, updatedAt: Date.now() } : s).sort((a, b) => b.updatedAt - a.updatedAt);
-            }
-            return [{ id: sessionId, title: title, messages: [], updatedAt: Date.now() }, ...prev];
-        });
-
-        try {
-            // Global OSINT & RAG search (NotebookLM Deep Context - 40 Chunks)
-            const relevantChunks = await globalVectorStore.similaritySearch(originalUserText, 40);
-            let contextText = relevantChunks.map(c => {
-                const docName = savedDocs.find(d => d.id === c.documentId)?.filename || 'مستند';
-                return `[ملف: ${docName}] - ${c.text}`;
-            }).join('\n---\n');
-
-            // --- V11 ADVANCED REAL-TIME WEB SEARCH ---
-            const TAVILY_API_KEY = import.meta.env.VITE_TAVILY_API_KEY || "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";
-            const isTemporalQuery = userText.match(/بحث|انترنت|جوجل|اخر|اخبار|معلومات|من هو|من هي|متى|أين|كيف|ما هو|ما هي|حرب|ضرب|هجوم|إسرائيل|اسرائيل|إيران|ايران|فلسطين|أخبار|عاجل|اليوم|الان|حالياً|مباراة|نتيجة|سعر|طقس|رئيس|وزير|what|who|when|where|how|news|latest|2024|2025|2026|امس|غدا/i);
-
-            if (relevantChunks.length === 0 || isTemporalQuery) {
-                try {
-                    setMessages(prev => [...prev, { role: 'system', content: '⏳ جاري البحث المباشر والعميق في الإنترنت...' }]);
-                    const encodedQ = encodeURIComponent(originalUserText);
-                    let webContext = "\n--- 🌐 بيانات حية ومباشرة من الإنترنت (الآن) ---\n";
-                    webContext += "⚠️ **أمر صارم للذكاء الاصطناعي:** أنت الآن في عام 2026. أي معلومات في ذاكرتك القديمة عن هذا الموضوع تعتبر لاغية. يجب عليك فقط قراءة الأخبار التالية المسحوبة للتو من الإنترنت وصياغة إجابة منها، مع ذكر المصادر.\n\n";
-                    let searchSucceeded = false;
-
-                    // Strategy 1: Tavily Advanced Search
-                    if (TAVILY_API_KEY) {
-                        try {
-                            const r = await fetch("https://api.tavily.com/search", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                    api_key: TAVILY_API_KEY,
-                                    query: originalUserText,
-                                    search_depth: "advanced",
-                                    include_answer: "advanced",
-                                    max_results: 5
-                                })
-                            });
-                            if (r.ok) {
-                                const d = await r.json();
-                                if (d.answer) webContext += `[الخلاصة المباشرة]: ${d.answer}\n\n`;
-                                if (d.results?.length) webContext += d.results.map((x: any) => `[المصدر: ${x.url}]\n${x.title}\n${x.content}`).join('\n\n');
-                                searchSucceeded = true;
-                            }
-                        } catch (err) { console.error("Tavily Error:", err); }
-                    }
-
-                    // Strategy 2: DuckDuckGo Instant Answer (Free, no key)
-                    if (!searchSucceeded) {
-                        try {
-                            const ddgRes = await fetch(`https://api.duckduckgo.com/?q=${encodedQ}&format=json&no_html=1&skip_disambig=1`);
-                            if (ddgRes.ok) {
-                                const d = await ddgRes.json();
-                                if (d.AbstractText) { webContext += `[مصدر: ${d.AbstractURL || 'DuckDuckGo'}]\n${d.AbstractText}\n\n`; searchSucceeded = true; }
-                                if (d.RelatedTopics?.length) {
-                                    const topics = d.RelatedTopics.slice(0, 4).map((t: any) => t.Text || '').filter(Boolean).join('\n');
-                                    if (topics) { webContext += `[نتائج ذات صلة - DuckDuckGo]:\n${topics}\n\n`; searchSucceeded = true; }
-                                }
-                            }
-                        } catch (_) { /* fall through */ }
-                    }
-
-                    // Strategy 3: Wikipedia Arabic
-                    if (!searchSucceeded) {
-                        try {
-                            const wkRes = await fetch(`https://ar.wikipedia.org/api/rest_v1/page/summary/${encodedQ}`, { headers: { Accept: 'application/json' } });
-                            if (wkRes.ok) {
-                                const d = await wkRes.json();
-                                if (d.extract) { webContext += `[ويكيبيديا العربية: ${d.content_urls?.desktop?.page || ''}]\n${d.extract}\n\n`; searchSucceeded = true; }
-                            }
-                        } catch (_) { /* fall through */ }
-                    }
-
-                    // Strategy 4: Wikipedia English fallback
-                    if (!searchSucceeded) {
-                        try {
-                            const wkEnRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(userText)}`, { headers: { Accept: 'application/json' } });
-                            if (wkEnRes.ok) {
-                                const d = await wkEnRes.json();
-                                if (d.extract) { webContext += `[Wikipedia: ${d.content_urls?.desktop?.page || ''}]\n${d.extract}\n\n`; searchSucceeded = true; }
-                            }
-                        } catch (_) { /* fall through */ }
-                    }
-
-                    if (searchSucceeded) contextText += '\n\n' + webContext;
-                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ جاري البحث المباشر')));
-                } catch (e) {
-                    console.error("Web Search Error", e);
-                    setMessages(prev => prev.filter(m => !m.content.includes('⏳ جاري البحث المباشر')));
-                }
-            }
-
-
-            const systemInstruction = `أنت مساعد أكاديمي ذكي متخصص في جميع مواد جامعة القدس المفتوحة واسمك Solvica V10 الخبير.
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-🎓 المواد التي تغطيها:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- علوم حاسوب: برمجة، خوارزميات، قواعد بيانات، شبكات، ذكاء اصطناعي
-- رياضيات: تفاضل وتكامل، جبر خطي، إحصاء، رياضيات متقطعة
-- إدارة أعمال: محاسبة، اقتصاد، تسويق، إدارة مالية
-- لغة عربية: نحو، بلاغة، أدب، نصوص
-- لغة إنجليزية: قواعد، قراءة، كتابة
-- تربية: علم نفس، مناهج، طرق تدريس
-- قانون: مدني، تجاري، دستوري
-- هندسة: رياضيات هندسية، فيزياء، ميكانيكا
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-✍️ قواعد الكتابة الثابتة:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- لا تستخدم LaTeX أو رموز \\ أو $$ أو $ أبداً.
-- لا تستخدم أقواس مربعة [ ] حول المعادلات.
-- اكتب المعادلات هكذا: f'(x) = 2x أو س² + ص².
-- اكتب الكسور هكذا: (أ) ÷ (ب) أو أ/ب.
-- اكتب الأس هكذا: س² أو س^2.
-- استخدم × بدل * و ÷ بدل /.
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-📋 قواعد التنسيق الثابتة:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- ابدأ كل رد بعنوان واضح يوضح الموضوع.
-- استخدم فواصل ━━━ بين الأقسام.
-- رقّم الخطوات دائماً: 1، 2، 3.
-- اشرح كل خطوة بجملة واضحة.
-- ضع الإجابة النهائية في سطر منفصل ومميز.
-- ضع سطر فارغ بين كل جزء.
-- لا تكتب أكثر من 3 أسطر في كل فقرة.
-- استخدم رموز تعبيرية للعناوين: 📌 ✅ ❌ 💡.
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-📝 عند حل الواجبات والمسائل:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- صف ما تفهمه من المسألة أولاً.
-- اذكر أي عنصر غير واضح وقل "يبدو أن...".
-- حل خطوة بخطوة مع شرح كل خطوة.
-- راجع إجابتك قبل تقديمها.
-- اذكر مستوى ثقتك: [عالي / متوسط / منخفض].
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 عند عمل الامتحانات:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- إذا ما حدد الطالب المستوى اسأله: سهل / متوسط / صعب؟
-- إذا ما حدد عدد الأسئلة اسأله كم سؤال يريد.
-- 4 خيارات حقيقية ومنطقية دائماً (أ، ب، ج، د).
-- لا تكتب "خيار 1" أو أي placeholder أبداً.
-- الخيارات الخاطئة تكون قريبة من الصح.
-- اذكر درجة كل سؤال.
-- اكتب مفتاح الإجابات مع شرح مختصر في النهاية.
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-📄 عند عمل الملخصات:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- ابدأ بفقرة تعريفية مختصرة.
-- قسّم الملخص لعناوين رئيسية واضحة.
-- استخدم نقاط مرقمة للأفكار الأساسية.
-- ضع جدول مقارنة إذا في مفاهيم متشابهة.
-- اختم بـ "أهم النقاط" في 3-5 أسطر.
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-🖼️ عند تحليل الصور والملفات:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- صف كل ما تراه في الصورة أولاً بدقة.
-- فرّق بين الأرقام والرموز بعناية.
-- إذا عنصر غير واضح قل "يبدو أن..." ولا تجزم.
-- حل المسألة بعد الفهم الكامل فقط.
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-💡 قواعد عامة ومراجع مدمجة:
-━━━━━━━━━━━━━━━━━━━━━━━━
-- تحدث باللغة العربية الفصحى السليمة حصراً.
-- ⚠️ أمر صارم جداً: يُمنع منعاً باتاً استخدام أو توليد رموز غريبة أو لغات أخرى (مثل الحروف الصينية 为了 أو كلمات مدمجة مثل يُrecommended). حافظ على نص عربي نقي وسليم 100%.
-- ⚠️ إلزامي وحتمي: يجب عليك دائماً إرفاق المصادر التي استعنت بها (سواء من بحث الإنترنت أو الملفات).
-- ⚠️ أمر قطعي بخصوص الروابط: عند كتابة رابط المصدر، يجب أن يكون رابطاً تشعبياً قابلاً للنقر بصيغة Markdown، مثال: [اسم الموقع](الرابط). لا تضع الروابط كنص عادي غير قابل للنقر أبداً.
-- أنت مصمم للإجابة عن أي أسئلة عامة (قنوات يوتيوب، شخصيات عامة، إنترنت، تاريخ، الخ) براحة تامة.
-- إذا لم تكن المعلومة موجودة في الملفات أو في بحث جوجل أو في مخزونك المعرفي، عندها فقط قل لا أعرف.
-- كن دقيقاً ومختصراً.
-
-${contextText ? `### 📚 مراجع متوفرة من ملفات الطالب (استخدمها كأولوية قصوى واذكر المصدر دائماً):\n${contextText}` : ''}
-`;
-
-            // --- V9 MULTIMEDIA ENGINE (DALL-E generation via Puter) ---
-            if (userText.match(/صمم صورة|ارسم|تخيل صورة|generate image/i)) {
-                setIsTyping(true);
-                setMessages(prev => [...prev, { role: 'assistant', content: '⏳ جاري تصميم الصورة عبر DALL-E (Puter Engine)...' }]);
-                try {
-                    const imgUrl = await aiClient.generateImage(originalUserText);
-                    const finalMsgList = [...newDisplayMessages, { role: 'assistant', content: '✅ تفضل الصورة التي طلبتها:', image: imgUrl } as AIChatMessage];
-                    setMessages(finalMsgList);
-                    await db.saveChatSession({ id: sessionId, title: originalUserText.substring(0, 30), messages: finalMsgList, updatedAt: Date.now() });
-                    setChatHistoryList(await db.getAllChatSessions());
-                } catch (e: any) {
-                    setMessages(prev => {
-                        const copy = [...prev];
-                        copy[copy.length - 1].content = "عذراً، حدث خطأ أثناء توليد الصورة.";
-                        return copy;
-                    });
-                }
-                setIsTyping(false);
-                return;
-            }
-
-            const streamMessages = [
-                ...newLogicMessages
-            ];
-
-            const callbacks = {
-                onChunk: (chunk: string) => {
-                    setMessages((prev: any[]) => {
-                        const copy = [...prev];
-                        const lastIndex = copy.length - 1;
-                        if (copy.length === 0 || copy[lastIndex].role !== 'assistant') {
-                            copy.push({ role: 'assistant', content: chunk });
-                        } else {
-                            copy[lastIndex] = { ...copy[lastIndex], content: copy[lastIndex].content + chunk };
-                        }
-                        return copy;
-                    });
-                },
-                onComplete: async (fullText: string) => {
-                    setIsTyping(false);
-                    const finalMsgList = [...newDisplayMessages, { role: 'assistant', content: fullText } as AIChatMessage];
-                    await db.saveChatSession({
-                        id: sessionId,
-                        title: originalUserText.substring(0, 30) || 'محادثة',
-                        messages: finalMsgList,
-                        updatedAt: Date.now()
-                    });
-                    setChatHistoryList(await db.getAllChatSessions());
-                },
-                onError: (err: any) => {
-                    console.error("Stream Error", err);
-                    setMessages(prev => {
-                        const copy = [...prev];
-                        copy[copy.length - 1].content = err?.message && err.message.includes("مشغول")
-                            ? err.message
-                            : "حدث خطأ غير متوقع، لكن الذكاء الاصطناعي لا يزال يعمل في الخلفية. جرب إعادة إرسال السؤال.";
-                        return copy;
-                    });
-                    setIsTyping(false);
-                }
-            };
-
-            await aiClient.streamChat(streamMessages, callbacks, { model: selectedModel }, systemInstruction);
-
-        } catch (error) {
-            console.error("Chat Error:", error);
-            setIsTyping(false);
+        if (sessionId === id) {
+            setMessages([]);
+            setSessionId(`session_${Date.now()}`);
+            localStorage.removeItem('solvica_last_session');
         }
     };
 
-    const exportChatToPDF = () => {
-        const element = document.getElementById('chat-messages-container');
-        if (!element) return;
+    const handleExport = async () => {
+        // Build clean HTML from messages instead of capturing messy DOM
+        const chatHtml = messages
+            .filter(m => m.role !== 'system')
+            .map(m => {
+                const isUser = m.role === 'user';
+                const label = isUser ? '🧑‍🎓 أنت' : '🤖 Solvica AI';
+                const bgColor = isUser ? '#e0f2fe' : '#f0fdf4';
+                const borderColor = isUser ? '#38bdf8' : '#22c55e';
+                // Convert markdown bold/italic to HTML
+                let content = (m.content as string)
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                    .replace(/`(.+?)`/g, '<code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:13px;">$1</code>')
+                    .replace(/\n/g, '<br/>');
+                return `
+                    <div style="background:${bgColor};border-right:4px solid ${borderColor};border-radius:12px;padding:16px 20px;margin-bottom:16px;direction:rtl;text-align:right;page-break-inside:avoid;">
+                        <div style="font-weight:900;font-size:13px;color:${isUser ? '#0369a1' : '#15803d'};margin-bottom:8px;">${label}</div>
+                        <div style="font-size:15px;line-height:1.9;color:#1f2937;word-break:break-word;">${content}</div>
+                    </div>
+                `;
+            }).join('');
 
-        const content = element.innerHTML;
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            alert('يرجى السماح بالنوافذ المنبثقة (Pop-ups) لتصدير أو طباعة المحادثة.');
+        // Create a temporary clean container
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = chatHtml;
+        tempDiv.style.cssText = 'position:absolute;top:0;left:0;width:210mm;z-index:-9999;pointer-events:none;background:white;padding:20px;direction:rtl;font-family:Tajawal,sans-serif;';
+        document.body.appendChild(tempDiv);
+
+        try {
+            const tempRef = { current: tempDiv } as React.RefObject<HTMLDivElement>;
+            await exportToPDF(tempRef, `محادثة_سولفيكا_${Date.now()}`);
+        } finally {
+            if (tempDiv.parentNode) tempDiv.parentNode.removeChild(tempDiv);
+        }
+    };
+
+    const startSpeechRecognition = () => {
+        if (!('webkitSpeechRecognition' in window)) {
+            alert("عذراً، متصفحك لا يدعم خاصية تحويل الصوت إلى نص.");
             return;
         }
 
-        const html = `
-            <!DOCTYPE html>
-            <html dir="rtl" lang="ar">
-            <head>
-                <meta charset="UTF-8">
-                <title>تصدير المحادثة - Solvica</title>
-                <style>
-                    body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        padding: 20px;
-                        color: #1e293b;
-                        line-height: 1.8;
-                        background: #fff;
-                    }
-                    .header {
-                        text-align: center;
-                        margin-bottom: 30px;
-                        border-bottom: 3px solid #2ba396;
-                        padding-bottom: 20px;
-                    }
-                    .header h1 { color: #2ba396; margin: 0; font-size: 24px; }
-                    .header p { color: #64748b; margin: 5px 0 0 0; font-size: 14px; }
-                    .space-y-6 > * + * { margin-top: 24px; }
-                    .flex { display: flex; }
-                    .flex-row-reverse { flex-direction: row-reverse; }
-                    .ml-auto { margin-left: auto; }
-                    .items-end { align-items: flex-end; }
-                    .gap-4 { gap: 16px; }
-                    .p-5 { padding: 20px; }
-                    .rounded-3xl { border-radius: 20px; }
-                    .text-lg { font-size: 16px; }
-                    .bg-\\[\\#4a85df\\] { background-color: #4a85df; color: #fff; }
-                    .bg-\\[\\#e5e7eb\\] { background-color: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0; }
-                    .rounded-br-sm { border-bottom-right-radius: 4px; }
-                    .rounded-bl-sm { border-bottom-left-radius: 4px; }
-                    .max-w-xs { max-width: 300px; }
-                    .rounded-xl { border-radius: 12px; }
-                    .mb-3 { margin-bottom: 12px; }
-                    .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-                    .w-10 { display: none; } /* Hide avatars in print */
-                    .break-words { word-break: break-word; }
-                    .prose { max-width: 100%; }
-                    .prose table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px; }
-                    .prose th, .prose td { border: 1px solid #cbd5e1; padding: 10px; text-align: right; }
-                    .prose th { background-color: rgba(0,0,0,0.05); font-weight: bold; }
-                    .prose pre { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto; font-family: monospace; direction: ltr; text-align: left; }
-                    .prose code { font-family: monospace; }
-                    .prose p { margin-top: 0; margin-bottom: 10px; }
-                    .prose ul, .prose ol { padding-right: 20px; margin-top: 0; margin-bottom: 10px; }
-                    @media print {
-                        body { padding: 0; background: #fff; }
-                        .header { margin-top: 0; }
-                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1>Solvica — المساعد الذكي</h1>
-                    <p>تاريخ الاستخراج: ${new Date().toLocaleDateString('ar-SA')} | منصة Solvica</p>
-                </div>
-                <div class="space-y-6" dir="rtl">
-                    ${content}
-                </div>
-                <script>
-                    window.onload = () => {
-                        window.print();
-                        setTimeout(() => window.close(), 500);
-                    };
-                </script>
-            </body>
-            </html>
-        `;
+        // @ts-ignore
+        const recognition = new window.webkitSpeechRecognition();
+        recognition.lang = 'ar-SA';
+        recognition.continuous = false;
+        recognition.interimResults = false;
 
-        printWindow.document.open();
-        printWindow.document.write(html);
-        printWindow.document.close();
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onerror = () => setIsListening(false);
+        
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            setInput(prev => (prev ? prev + " " + transcript : transcript));
+        };
+
+        recognition.start();
     };
 
+    const startNewChat = () => {
+        setMessages([]);
+        setSessionId(`session_${Date.now()}`);
+        setIsSidebarOpen(false);
+        setAttachedFileText(null);
+        setAttachedFileName(null);
+        setSelectedImage(null);
+        setGreeting();
+    };
+
+
+
     return (
-        <AppLayout>
-            {/* The main background matching global app theme */}
-            <div className="flex justify-center items-center h-[90vh] p-4 lg:p-8 bg-[var(--bg-background)] font-sans transform " dir="rtl">
-
-                {/* The Main Container - Full Width */}
-                <div className="w-full max-w-[95%] h-full flex flex-col md:flex-row gap-6 bg-[var(--bg-surface)] backdrop-blur-3xl rounded-[2.5rem] p-6 shadow-2xl border border-[var(--border-color)] ">
-
-                    {/* RIGHT PANE: Sidebar (محادثاتك) */}
-                    <div className="hidden md:flex flex-col w-[180px] min-w-[160px] bg-[var(--bg-background)] rounded-2xl p-3 shadow-sm border border-[var(--border-color)] ">
-
-                        {/* Title */}
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="font-bold text-base text-[var(--text-main)]">محادثاتك</h2>
-                        </div>
-
-                        {/* New Chat Button */}
-                        <button onClick={startNewChat} className="w-full flex items-center justify-center gap-2 bg-[#2ba396] hover:bg-[#238b7f] text-white font-bold py-3 px-3 rounded-xl transition-all shadow-lg shadow-[#2ba396]/30 mb-4 text-sm">
-                            <Plus className="w-5 h-5" /> محادثة جديدة
+        <AppLayout fullWidth={true}>
+            <div className="flex h-[calc(100vh-45px)] overflow-hidden p-2 md:p-2 gap-4" dir="rtl">
+                
+                {/* Right Pane: History Sidebar Desktop & Mobile */}
+                {/* Desktop: normal flex column. Mobile: fixed overlay drawer */}
+                <div className="hidden lg:flex lg:flex-col w-[260px] max-w-[20%] h-full shrink-0 bg-[var(--bg-background)] border border-[var(--border-color)] rounded-2xl overflow-hidden shadow-sm" dir="rtl">
+                    <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-surface)]">
+                        <h2 className="text-sm md:text-base font-black text-[var(--text-main)] pr-1">محادثاتك</h2>
+                        <button
+                            onClick={startNewChat}
+                            className="bg-[#2ba396] hover:bg-[#238b7f] text-white p-1.5 rounded-lg transition-all shadow-md active:scale-95 flex items-center justify-center shrink-0"
+                            title="محادثة جديدة"
+                        >
+                            <Zap className="w-3.5 h-3.5" />
                         </button>
-
-                        {/* History List */}
-                        <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-2">
-                            {chatHistoryList.length === 0 && <p className="text-sm text-slate-400 text-center py-4">لا توجد محادثات سابقة</p>}
-                            {chatHistoryList.map(session => (
-                                <div
-                                    key={session.id}
-                                    onClick={() => loadSession(session.id)}
-                                    className={`w-full text-right p-2.5 rounded-xl transition-all cursor-pointer flex justify-between items-center group
-                                        ${session.id === sessionId ? 'bg-[#2ba396]/10 border border-[#2ba396]/20 shadow-sm' : 'hover:bg-[var(--bg-surface)] border border-transparent'}
-                                    `}
+                    </div>
+                        
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                        {chatHistoryList.length === 0 && (
+                            <div className="text-center py-10">
+                                <MessageSquare className="w-8 h-8 text-[var(--text-muted)] opacity-20 mx-auto mb-2" />
+                                <p className="text-xs text-[var(--text-muted)] px-4">ابدأ أول محادثة ذكية الآن لتظهر هنا</p>
+                            </div>
+                        )}
+                        {chatHistoryList.map(session => (
+                            <div 
+                                key={session.id} 
+                                onClick={() => { loadSession(session.id); setIsSidebarOpen(false); }}
+                                className={`p-3 rounded-xl cursor-pointer transition-all border group flex justify-between items-center ${session.id === sessionId ? 'bg-[#2ba396]/10 border-[#2ba396] shadow-sm' : 'bg-[var(--bg-surface)] border-transparent hover:border-[var(--border-color)]'}`}
+                            >
+                                <span className={`truncate text-xs font-bold ${session.id === sessionId ? 'text-[#2ba396]' : 'text-[var(--text-main)]'}`}>
+                                    {session.title}
+                                </span>
+                                <button
+                                    onClick={(e) => deleteSession(session.id, e)}
+                                    className="text-red-500 hover:text-white transition-opacity p-2 bg-red-500/10 hover:bg-red-500 rounded-lg shrink-0 flex items-center justify-center opacity-100 always-visible"
+                                    title="حذف المحادثة"
                                 >
-                                    <span className={`truncate text-xs font-bold ${session.id === sessionId ? 'text-[#2ba396]' : 'text-[var(--text-muted)]'}`}>
-                                        <MessageSquare className="w-4 h-4 inline-block ml-2 opacity-50" />
-                                        {session.title}
-                                    </span>
+                                    <Trash2 className="w-5 h-5 sm:w-4 sm:h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Mobile Overlay Drawer — rendered via Portal on document.body */}
+                {isSidebarOpen && ReactDOM.createPortal(
+                    <div
+                        dir="rtl"
+                        style={{position:'fixed', top:0, left:0, right:0, bottom:0, zIndex:99999}}
+                    >
+                        {/* Backdrop */}
+                        <div
+                            onClick={() => setIsSidebarOpen(false)}
+                            style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.8)'}}
+                        />
+                        {/* Drawer Panel */}
+                        <div style={{position:'absolute', right:0, top:0, bottom:0, width:'80%', maxWidth:'320px', background:'var(--bg-background)', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'-8px 0 40px rgba(0,0,0,0.6)'}}>
+                            {/* Drawer Header */}
+                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px', borderBottom:'3px solid #2ba396', background:'var(--bg-surface)', minHeight:'72px', flexShrink:0}}>
+                                <h2 style={{fontSize:'18px', fontWeight:'900', color:'var(--text-main)', margin:0}}>💬 محادثاتك</h2>
+                                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
                                     <button
-                                        onClick={(e) => deleteSession(session.id, e)}
-                                        className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="حذف المحادثة"
+                                        onClick={() => { startNewChat(); setIsSidebarOpen(false); }}
+                                        style={{display:'flex', alignItems:'center', gap:'6px', background:'#2ba396', color:'white', padding:'10px 14px', borderRadius:'14px', fontSize:'13px', fontWeight:'900', border:'none', cursor:'pointer', boxShadow:'0 4px 20px rgba(43,163,150,0.5)'}}
                                     >
-                                        <Trash2 className="w-4 h-4" />
+                                        <Zap style={{width:'16px', height:'16px'}} /> جديدة
+                                    </button>
+                                    <button
+                                        onClick={() => setIsSidebarOpen(false)}
+                                        className="flex items-center justify-center bg-red-500 text-white w-10 h-10 rounded-xl shrink-0 shadow-[0_4px_20px_rgba(239,68,68,0.3)] hover:bg-red-600 transition-colors cursor-pointer border-0"
+                                    >
+                                        <X className="w-6 h-6" />
                                     </button>
                                 </div>
-                            ))}
+                            </div>
+                            {/* Drawer History List */}
+                            <div style={{flex:1, overflowY:'auto', padding:'12px', display:'flex', flexDirection:'column', gap:'8px'}}>
+                                {chatHistoryList.length === 0 && (
+                                    <div style={{textAlign:'center', padding:'40px 16px'}}>
+                                        <MessageSquare style={{width:'32px', height:'32px', opacity:0.2, margin:'0 auto 8px', color:'var(--text-muted)'}} />
+                                        <p style={{fontSize:'12px', color:'var(--text-muted)'}}>ابدأ أول محادثة ذكية الآن لتظهر هنا</p>
+                                    </div>
+                                )}
+                                {chatHistoryList.map(session => (
+                                        <div
+                                            key={session.id}
+                                            onClick={() => { loadSession(session.id); setIsSidebarOpen(false); }}
+                                            className={`p-3 rounded-xl cursor-pointer border flex justify-between items-center ${session.id === sessionId ? 'border-[#2ba396] bg-[#2ba396]/10' : 'border-transparent bg-[var(--bg-surface)] hover:border-[#2ba396]/20'}`}
+                                        >
+                                            <span className={`text-sm font-bold truncate flex-1 ${session.id === sessionId ? 'text-[#2ba396]' : 'text-[var(--text-main)]'}`}>
+                                                {session.title}
+                                            </span>
+                                            <button
+                                                onClick={(e) => deleteSession(session.id, e)}
+                                                className="text-red-500 shrink-0 p-2 sm:p-1.5 ml-2 bg-red-500/10 hover:bg-red-500 hover:text-white rounded-lg flex items-center justify-center opacity-100 always-visible transition-colors"
+                                            >
+                                                <Trash2 className="w-5 h-5 sm:w-4 sm:h-4" />
+                                            </button>
+                                        </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
+
+                {/* Main Content */}
+                <div className="flex-1 flex flex-col bg-[var(--bg-background)] rounded-2xl shadow-sm border border-[var(--border-color)] overflow-hidden relative">
+
+                    {/* Header */}
+                    <div className="p-3 md:p-4 flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-surface)] backdrop-blur-md z-40 shrink-0 relative">
+                        <div className="flex items-center gap-2 sm:gap-3 relative z-10 w-fit shrink-0">
+                            <button
+                                onClick={() => setIsSidebarOpen(true)}
+                                className="lg:hidden p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-[var(--bg-background)] border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[#2ba396] active:bg-[var(--hover-bg)] transition-all shadow-sm active:scale-90"
+                                title="سجل المحادثات"
+                            >
+                                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 transition-transform" />
+                            </button>
+                            <div className="flex flex-col">
+                                <h1 className="font-display font-black tracking-widest text-lg sm:text-xl md:text-2xl lg:text-4xl m-0 leading-none bg-gradient-to-r from-[#00d2ff] via-[#8e2de2] to-[#f000ff] text-transparent bg-clip-text uppercase">Solvica</h1>
+                                <span className="text-[8px] sm:text-[10px] md:text-xs lg:text-sm text-[var(--text-muted)] font-bold flex items-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1">
+                                    <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 rounded-full bg-[#2ba396] shadow-[0_0_8px_#2ba396]" /> 
+                                    المحرك التعليمي
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden justify-end">
+                            <div className="relative w-28 sm:w-32 md:w-48">
+                                <select
+                                    className="w-full bg-[#2ba396]/10 text-[#2ba396] text-[10px] sm:text-xs md:text-sm lg:text-base font-bold rounded-lg sm:rounded-xl px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 border border-[#2ba396]/20 shadow-sm appearance-none cursor-pointer pr-6 sm:pr-8 md:pr-12 pl-1 outline-none hover:bg-[#2ba396]/20 transition-colors truncate"
+                                    value={selectedContextDocId}
+                                    onChange={(e) => setSelectedContextDocId(e.target.value)}
+                                >
+                                    <option value="">🔍 بحث ذكي</option>
+                                    {Array.from(new Set(savedDocs.map(d => d.subjectName).filter(Boolean))).map(subj => (
+                                        <option key={`subj-${subj}`} value={`subject:${subj}`}>📂 {subj}</option>
+                                    ))}
+                                    {savedDocs
+                                        .filter(d => !d.filename?.startsWith("_solvica_folder_") && !d.title?.startsWith("_solvica_folder_"))
+                                        .map(d => (
+                                            <option key={d.id} value={d.id}>📖 {d.title || d.filename}</option>
+                                        ))}
+                                </select>
+                                <BookOpen className="w-5 h-5 text-[#2ba396] absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                            </div>
+                            <button
+                                onClick={messages.length > 1 ? handleExport : undefined}
+                                className={`shrink-0 flex items-center gap-1 bg-[var(--bg-background)] border border-[var(--border-color)] p-2 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl transition-all shadow-sm text-[10px] sm:text-xs font-bold ${messages.length > 1 ? 'hover:border-[#2ba396] text-[var(--text-muted)] hover:text-[#2ba396] cursor-pointer' : 'opacity-40 cursor-not-allowed text-[var(--text-muted)]'}`}
+                                title={messages.length > 1 ? "تصدير المحادثة PDF" : "أرسل رسالة أولاً"}
+                            >
+                                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                                <span className="hidden sm:inline">تصدير PDF</span>
+                            </button>
                         </div>
                     </div>
 
-                    {/* LEFT PANE: Chat Interface - Full Width */}
-                    <div className="flex-1 flex flex-col bg-[var(--bg-background)] rounded-2xl shadow-sm border border-[var(--border-color)] overflow-hidden relative ">
-
-                        {/* Header */}
-                        <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between z-10 backdrop-blur-md bg-[var(--bg-surface)]/90 ">
-                            <div className="flex flex-col">
-                                <h1 className="font-extrabold text-xl text-[var(--text-main)] m-0 leading-tight">Solvica</h1>
-                                <span className="text-xs text-[#2ba396] font-bold flex items-center gap-1 mt-1">
-                                    <span className="w-2 h-2 rounded-full bg-[#2ba396] animate-pulse" /> محرك V10 الخارق
-                                </span>
-                            </div>
-
-                            {/* Actions & Model Selector UI */}
-                            <div className="flex items-center gap-3">
-                                <button onClick={exportChatToPDF} className="bg-[var(--bg-background)] hover:bg-[var(--hover-bg)] text-[var(--text-main)] text-sm font-bold rounded-xl px-4 py-2 transition-all flex items-center gap-2 border border-[var(--border-color)] shadow-sm" title="تصدير المحادثة كملف PDF احترافي">
-                                    <Download className="w-4 h-4 text-[#2ba396]" /> <span className="hidden sm:inline">تصدير PDF</span>
-                                </button>
-                                <select
-                                    value={selectedModel}
-                                    onChange={(e) => setSelectedModel(e.target.value)}
-                                    className="bg-[var(--bg-background)] border border-[var(--border-color)] text-[var(--text-main)] text-sm font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#2ba396] cursor-pointer transition-all shadow-sm hidden sm:block"
-                                >
-                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (سريع وقوي)</option>
-                                    <option value="gpt-4o">GPT-4o (المفضل)</option>
-                                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Chat Messages */}
-                        <div ref={scrollRef} id="chat-messages-container" className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-[var(--bg-background)] ">
-                            {messages.map((msg, idx) => (
-                                <div key={idx} id={`msg-${idx}`} className={`flex gap-4 items-end max-w-[85%] ${msg.role === 'user' ? 'mr-auto flex-row-reverse' : 'ml-auto'}`}>
-
-                                    {/* AI Avatar */}
-                                    {msg.role === 'assistant' && (
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2ba396] to-teal-700 flex items-center justify-center shrink-0 mb-1 shadow-md border border-[#238b7f]">
-                                            <Brain className="w-6 h-6 text-white" />
+                    {/* Chat Messages */}
+                    <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 custom-scrollbar bg-[var(--bg-background)]">
+                        {messages.filter(msg => msg.role === 'user' || (msg.content && msg.content.trim()) || msg.image || msg.attachmentName).map((msg, idx) => (
+                            <div key={idx} className={`flex gap-3 sm:gap-4 items-end max-w-[82%] sm:max-w-[75%] ${msg.role === 'user' ? 'mr-auto flex-row-reverse mb-6' : 'ml-auto'}`}
+                                style={{animation: 'fadeInSlide 0.3s ease-out'}}>
+                                {msg.role === 'assistant' && (
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2ba396] to-teal-700 flex items-center justify-center shrink-0 mb-1 shadow-md border border-[#238b7f]">
+                                        <Brain className="w-5 h-5 text-white" />
+                                    </div>
+                                )}
+                                <div style={{ maxWidth: '78%' }}>
+                                    {msg.role === 'user' ? (
+                                        /* ─── Beautiful User Message Box ─── */
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, #2ba396 0%, #1a7a70 60%, #8e2de2 100%)',
+                                            borderRadius: '20px 20px 4px 20px',
+                                            padding: '12px 18px',
+                                            boxShadow: '0 4px 20px rgba(43,163,150,0.35)',
+                                            color: 'white',
+                                            fontWeight: '700',
+                                            fontSize: '14px',
+                                            lineHeight: '1.7',
+                                            direction: 'rtl',
+                                            textAlign: 'right',
+                                            position: 'relative',
+                                        }}>
+                                            {msg.attachmentName && (
+                                                <div style={{display:'flex', alignItems:'center', gap:'8px', background:'rgba(255,255,255,0.15)', borderRadius:'10px', padding:'8px 12px', marginBottom:'10px'}}>
+                                                    <FileText style={{width:'16px', height:'16px', color:'white', flexShrink:0}} />
+                                                    <span style={{fontSize:'12px', fontWeight:'700', opacity:0.9, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{msg.attachmentName}</span>
+                                                </div>
+                                            )}
+                                            {msg.image && <img src={msg.image} alt="Upload" style={{maxWidth:'100%', maxHeight:'200px', borderRadius:'12px', marginBottom:'8px', border:'2px solid rgba(255,255,255,0.3)'}} />}
+                                            <span>{msg.content}</span>
+                                        </div>
+                                    ) : (
+                                        /* ─── Assistant Message Box ─── */
+                                        <div className="relative group" style={{
+                                            background: 'var(--bg-surface)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '20px 20px 20px 4px',
+                                            padding: '12px 16px',
+                                            fontSize: '14px',
+                                            lineHeight: '1.7',
+                                            direction: 'rtl',
+                                            textAlign: 'right',
+                                        }}>
+                                            <div className="absolute top-3 left-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20">
+                                                <button
+                                                    onClick={() => navigator.clipboard.writeText(msg.content)}
+                                                    className="p-2 bg-[var(--bg-background)] hover:bg-[#2ba396]/10 rounded-xl border border-[var(--border-color)] shadow-sm"
+                                                    title="نسخ الإجابة"
+                                                >
+                                                    <Copy className="w-4 h-4 text-[#2ba396]" />
+                                                </button>
+                                            </div>
+                                            {msg.attachmentName && (
+                                                <div className="flex flex-wrap items-center gap-3 rounded-xl p-3 shadow-sm mb-3 w-fit pr-4 bg-[var(--bg-surface)] border border-[var(--border-color)]">
+                                                    <FileText className="w-5 h-5 text-red-500" />
+                                                    <div className="flex flex-col text-right truncate text-[var(--text-main)]">
+                                                        <span className="font-bold text-sm truncate max-w-[200px]" dir="ltr">{msg.attachmentName}</span>
+                                                        <span className="text-xs opacity-70">مستند ملحق</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {msg.image && <img src={msg.image} alt="Upload" className="max-w-xs h-auto rounded-xl border border-[var(--border-color)] mb-3 shadow-md" />}
+                                            <div className="html-content text-[var(--text-main)] pb-2 text-[14px] leading-[1.7] break-words prose-a:text-blue-500 prose-a:underline hover:prose-a:text-blue-600">
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm, remarkMath]}
+                                                    rehypePlugins={[[rehypeKatex, { strict: false }]]}
+                                                    components={{
+                                                        a: ({node, href, ...props}: any) => {
+                                                            const isAuthLink = href?.includes('pollinations.ai/authorize');
+                                                            return <a 
+                                                                href={href} 
+                                                                {...props} 
+                                                                target={isAuthLink ? "_self" : "_blank"} 
+                                                                rel="noopener noreferrer" 
+                                                                className="text-blue-500 underline hover:text-blue-700 font-bold" 
+                                                            />;
+                                                        },
+                                                        code({node, inline, className, children, ...props}: any) {
+                                                            const match = /language-(\w+)/.exec(className || '')
+                                                            return !inline && match ? (
+                                                                <SyntaxHighlighter
+                                                                    // @ts-ignore
+                                                                    style={vscDarkPlus}
+                                                                    language={match[1]}
+                                                                    PreTag="div"
+                                                                    {...props}
+                                                                >
+                                                                    {String(children).replace(/\n$/, '')}
+                                                                </SyntaxHighlighter>
+                                                            ) : (
+                                                                <code className={className} {...props}>
+                                                                    {children}
+                                                                </code>
+                                                            )
+                                                        }
+                                                    }}
+                                                >
+                                                    {msg.content}
+                                                </ReactMarkdown>
+                                            </div>
                                         </div>
                                     )}
-
-                                    {/* Bubble */}
-                                    <div className={`p-5 rounded-3xl text-base relative ${msg.role === 'user' ? 'bg-[#2ba396] text-white rounded-br-sm' : 'bg-[var(--bg-surface)] text-[var(--text-main)] rounded-bl-sm leading-relaxed font-medium border border-[var(--border-color)]'}`}>
-                                        {msg.image && (
-                                            <img src={msg.image} alt="Upload" className="max-w-xs rounded-xl mb-3 shadow-md" />
-                                        )}
-                                        <div className="prose dark:prose-invert max-w-none break-words prose-p:leading-relaxed prose-headings:text-[var(--text-main)] prose-strong:text-[var(--text-main)] text-[var(--text-main)] pb-2 text-sm md:text-base">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                                        </div>
-                                        {msg.role === 'assistant' && msg.content.length > 20 && (
-                                            <button onClick={() => { setFeedbackModal({ msgIdx: idx, content: msg.content }); setFeedbackText(''); }} className="mt-2 text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors flex items-center gap-1" title="الإجابة خاطئة؟ صحح">
-                                                👎 إجابة خاطئة؟ صحح
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                            {feedbackModal && (
-                                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4" dir="rtl">
-                                    <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-6 w-full max-w-md shadow-2xl">
-                                        <h3 className="text-lg font-bold text-[var(--text-main)] mb-2">🧠 تصحيح للذاكرة الذكية</h3>
-                                        <p className="text-xs text-[var(--text-muted)] mb-4">ما الجواب الصحيح؟ سيتذكره الذكاء الاصطناعي في كل المحادثات القادمة.</p>
-                                        <textarea className="w-full bg-[var(--bg-background)] border border-[var(--border-color)] rounded-xl p-3 text-[var(--text-main)] text-sm resize-none h-24 outline-none focus:border-[#2ba396]" placeholder="اكتب الجواب الصحيح..." value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
-                                        <div className="flex gap-3 mt-4">
-                                            <button onClick={() => { if (feedbackText.trim()) { aiMemory.add({ type: 'correction', question: messages[feedbackModal.msgIdx - 1]?.content || '', wrong: feedbackModal.content.slice(0, 150), correct: feedbackText.trim() }); } setFeedbackModal(null); }} className="flex-1 bg-[#2ba396] text-white font-bold py-2 rounded-xl hover:bg-[#238b7f] transition-colors">✅ حفظ التصحيح</button>
-                                            <button onClick={() => setFeedbackModal(null)} className="flex-1 bg-[var(--bg-background)] border border-[var(--border-color)] text-[var(--text-muted)] font-bold py-2 rounded-xl">إلغاء</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {isTyping && messages[messages.length - 1]?.content !== '...' && (
-                                <div className="flex gap-4 items-end max-w-[85%] ml-auto">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2ba396] to-teal-700 flex items-center justify-center shrink-0 mb-1 shadow-md border border-[#238b7f]">
-                                        <Brain className="w-6 h-6 text-white animate-pulse" />
-                                    </div>
-                                    <div className="p-5 rounded-3xl bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-bl-sm flex gap-2 items-center">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-slate-400 animate-bounce" />
-                                        <span className="w-2.5 h-2.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0.1s' }} />
-                                        <span className="w-2.5 h-2.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0.2s' }} />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Input Area */}
-                        <div className="p-4 bg-[var(--bg-surface)] border-t border-[var(--border-color)] ">
-                            {selectedImage && (
-                                <div className="mb-4 relative inline-block">
-                                    <img src={selectedImage} alt="Preview" className="h-24 rounded-xl shadow-md border border-slate-200" />
-                                    <button onClick={() => setSelectedImage(null)} className="absolute -top-3 -right-3 bg-red-500 rounded-full p-1.5 text-white shadow-lg"><Trash2 className="w-4 h-4" /></button>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-3 bg-[var(--bg-background)] p-2 rounded-full border-2 border-[var(--border-color)] focus-within:border-[#2ba396] transition-colors shadow-sm px-4">
-
-                                <input
-                                    type="text"
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
-                                    }}
-                                    placeholder="اكتب رسالتك هنا..."
-                                    className="flex-1 bg-transparent border-none text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:ring-0 py-3 text-base font-medium outline-none"
-                                />
-
-                                <div className="flex items-center gap-2">
-                                    <button onClick={toggleRecording} className={`p-2 rounded-full transition-colors ${isRecording ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'}`}>
-                                        {isRecording ? <StopCircle className="w-6 h-6 animate-pulse" /> : <Mic className="w-6 h-6" />}
-                                    </button>
-
-                                    <button onClick={() => imageInputRef.current?.click()} className="p-2 text-slate-400 hover:text-slate-600 rounded-full transition-colors" title="إرفاق صورة أو مستند (PDF/Word)">
-                                        <Paperclip className="w-6 h-6" />
-                                        <input type="file" ref={imageInputRef} className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" onChange={handleFileUpload} />
-                                    </button>
-
-                                    <button
-                                        onClick={sendMessage}
-                                        disabled={isTyping || (!input.trim() && !selectedImage)}
-                                        className="w-11 h-11 flex items-center justify-center bg-[#2ba396] hover:bg-[#238b7f] text-white rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
-                                    </button>
                                 </div>
                             </div>
+                        ))}
+
+                        {isTyping && messages[messages.length - 1]?.role === 'user' && (
+                            <div className="flex gap-3 sm:gap-4 items-end max-w-[85%] sm:max-w-[75%] ml-auto w-fit">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2ba396] to-teal-700 flex items-center justify-center shrink-0 mb-1 shadow-md border border-[#238b7f]">
+                                    <Brain className="w-6 h-6 text-white animate-pulse" />
+                                </div>
+                                <div className="p-4 rounded-3xl bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-bl-sm flex gap-3 items-center">
+                                    <span className="text-sm font-bold text-[#2ba396] animate-pulse">يتم استيعاب المراجع والتفكير للإجابة بدقة... 🧠</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-4 bg-[var(--bg-background)] border-t border-[var(--border-color)]">
+                        {selectedImage && (
+                            <div className="mb-4 relative inline-block mr-2 md:mr-10 lg:mr-20">
+                                <img src={selectedImage} alt="Preview" className="h-24 rounded-xl shadow-md border border-[var(--border-color)]" />
+                                <button onClick={() => setSelectedImage(null)} className="absolute -top-3 -right-3 bg-red-500 rounded-full p-1.5 text-white shadow-lg"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                        )}
+                        {attachedFileName && (
+                            <div className="mb-4 relative inline-block mr-2 md:mr-10 lg:mr-20 max-w-[100%]">
+                                <div className="flex items-center gap-3 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-3 shadow-sm min-w-[200px] max-w-full pr-4 relative">
+                                    <FileText className="w-5 h-5 text-red-500" />
+                                    <div className="flex flex-col text-right truncate text-[var(--text-main)]">
+                                        <span className="font-bold text-sm truncate max-w-[200px]" dir="ltr">{attachedFileName}</span>
+                                        <span className="text-xs opacity-70">مستند مرفق</span>
+                                    </div>
+                                    <button onClick={() => { setAttachedFileName(null); setAttachedFileText(null); }} className="absolute -top-3 -right-3 bg-slate-800 rounded-full p-1.5 text-white shadow-lg"><X className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                        )}
+                        <div style={{display:'flex', alignItems:'center', gap:'8px', background:'var(--bg-surface)', borderRadius:'999px', border:'2px solid var(--border-color)', padding:'6px', width:'100%', maxWidth:'98%', margin:'0 auto', boxShadow:'0 4px 20px rgba(0,0,0,0.15)'}}>
+                            <label style={{padding:'10px', color:'var(--text-muted)', cursor:'pointer', borderRadius:'50%', flexShrink:0}}>
+                                <Paperclip style={{width:'22px', height:'22px'}} />
+                                <input type="file" className="hidden" onChange={handleFileUpload} accept="image/*,.txt,.pdf,.md,.docx" />
+                            </label>
+                            <input
+                                type="text"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                                placeholder="اسأل Solvica أي شيء..."
+                                style={{flex:1, background:'transparent', padding:'12px 8px', color:'var(--text-main)', outline:'none', fontSize:'14px', minWidth:0}}
+                            />
+                            <button
+                                onClick={startSpeechRecognition}
+                                style={{padding:'10px', borderRadius:'50%', flexShrink:0, color: isListening ? '#ef4444' : 'var(--text-muted)', background: isListening ? 'rgba(239,68,68,0.1)': 'transparent'}}
+                            >
+                                {isListening ? <StopCircle style={{width:'24px',height:'24px'}} /> : <Mic style={{width:'24px',height:'24px'}} />}
+                            </button>
+                            <button
+                                onClick={sendMessage}
+                                disabled={isTyping || (!input.trim() && !selectedImage)}
+                                style={{width:'48px', height:'48px', borderRadius:'50%', background:'#2ba396', color:'white', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, opacity: (isTyping || (!input.trim() && !selectedImage)) ? 0.3 : 1, boxShadow:'0 4px 15px rgba(43,163,150,0.4)'}}
+                            >
+                                <Send style={{width:'22px', height:'22px', transform:'rotate(180deg)'}} />
+                            </button>
                         </div>
+                        <p className="text-center text-[10px] sm:text-xs text-[var(--text-muted)] mt-3 sm:mt-4 opacity-70 px-2 leading-relaxed">
+                            قد يُنتِج موقع Solvica ردودًا غير دقيقة، لذا يُرجى التحقّق من ردودها. والموقع غير مسؤول عن استخدام الذكاء الاصطناعي في الغش الأكاديمي.
+                        </p>
                     </div>
                 </div>
             </div>

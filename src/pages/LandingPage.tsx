@@ -40,6 +40,15 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
     const [loginError, setLoginError] = useState('');
     const [isRegister, setIsRegister] = useState(false);
 
+    const handleProtectedNavigation = (path: string) => {
+        if (user) {
+            navigate(path);
+        } else {
+            setShowLogin(true);
+            setIsRegister(true);
+        }
+    };
+
     const handleLogin = () => {
         const username = loginName.trim();
         if (!username) { setLoginError('أدخل اسمك'); return; }
@@ -80,12 +89,13 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
             <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[150px] pointer-events-none" />
 
             <div className="w-full max-w-7xl mx-auto px-6 py-8 z-10">
-                <header className="flex justify-between items-center mb-16 glass-widget px-8 py-4 rounded-full">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8e2de2] to-[#f000ff] flex items-center justify-center shadow-md">
-                            <span className="text-white font-black text-lg tracking-widest">S</span>
+                <header className="flex justify-between items-center mb-8 sm:mb-16 glass-widget px-4 sm:px-8 py-3 sm:py-4 rounded-full">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-[#8e2de2] to-[#f000ff] flex items-center justify-center shadow-md shrink-0">
+                            <span className="text-white font-black text-base sm:text-lg tracking-widest">S</span>
                         </div>
-                        <span className="text-2xl font-display font-black tracking-widest bg-gradient-to-r from-[#00d2ff] via-[#8e2de2] to-[#f000ff] text-transparent bg-clip-text">SOLVICA</span>
+                        <span className="text-xl sm:text-2xl font-display font-black tracking-widest bg-gradient-to-r from-[#00d2ff] via-[#8e2de2] to-[#f000ff] text-transparent bg-clip-text">SOLVICA</span>
+                        <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shrink-0 uppercase tracking-wider hidden sm:block">نسخة تجريبية Beta</span>
                     </div>
                     <nav className="hidden lg:flex items-center gap-8 text-sm font-bold text-[var(--text-muted)]">
                         <Link to="/features" className="hover:text-secondary transition-colors uppercase tracking-widest text-xs">المميزات</Link>
@@ -100,24 +110,28 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
                         </button>
 
                         {user ? (
-                            <div className="flex items-center gap-3">
-                                <img src={user.picture} alt="Profile" className="w-10 h-10 rounded-full border-2 border-[#2ba396]" />
-                                <Link to="/dashboard" className="btn-primary text-sm px-6 py-2.5 inline-block text-center">الرئيسية</Link>
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <img src={user.picture} alt="Profile" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-[#2ba396]" />
+                                <Link to="/dashboard" className="btn-primary text-xs sm:text-sm px-3 sm:px-6 py-2 sm:py-2.5 inline-block text-center">الرئيسية</Link>
                             </div>
                         ) : (
-                            <div className="hidden sm:flex items-center gap-2">
-                                <Link to="/dashboard" className="bg-[var(--bg-surface)] text-[var(--text-main)] border border-[var(--border-color)] hover:bg-[var(--hover-bg)] text-sm px-5 py-2.5 rounded-full transition-colors font-bold">
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => {
+                                    const guestUser = { name: "طالب ضيف", picture: "https://api.dicebear.com/9.x/bottts/svg?seed=solvica" };
+                                    setUser(guestUser);
+                                    localStorage.setItem('solvicaUser', JSON.stringify(guestUser));
+                                    navigate('/dashboard');
+                                }} className="hidden md:block bg-[var(--bg-surface)] text-[var(--text-main)] border border-[var(--border-color)] hover:bg-[var(--hover-bg)] text-sm px-5 py-2.5 rounded-full transition-colors font-bold">
                                     دخول كزائر
-                                </Link>
+                                </button>
                                 <button
                                     onClick={() => { setShowLogin(true); setIsRegister(false); }}
-                                    className="btn-primary text-sm px-6 py-2.5 rounded-full shadow-lg"
+                                    className="btn-primary text-xs sm:text-sm px-3 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg font-bold"
                                 >
-                                    تسجيل الدخول 🔑
+                                    دخول 🔑
                                 </button>
                             </div>
                         )}
-                        {!user && <button onClick={() => { setShowLogin(true); setIsRegister(true); }} className="btn-primary text-sm px-6 py-2.5 inline-block text-center sm:hidden">حساب جديد</button>}
                     </div>
                 </header>
 
@@ -261,27 +275,27 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
                         <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 via-transparent to-secondary/20 blur-3xl rounded-full" />
 
                         <div className="grid grid-cols-2 gap-4 relative z-10">
-                            <Link to="/solver" className="col-span-2 glass-widget bg-gradient-to-br from-[#c4f042] to-[#a3d122] text-black p-6 flex flex-col justify-between h-48 cursor-pointer hover:scale-[1.02] border-0">
+                            <button onClick={() => handleProtectedNavigation('/solver')} className="col-span-2 glass-widget bg-gradient-to-br from-[#c4f042] to-[#a3d122] text-black p-6 flex flex-col justify-between h-48 cursor-pointer hover:scale-[1.02] border-0 text-right">
                                 <MessageSquare className="w-8 h-8 opacity-80" />
                                 <div>
                                     <h3 className="text-2xl font-black">حل الواجبات الدراسية</h3>
                                     <p className="text-black/70 text-sm font-bold mt-1">ذكاء دقيق، مع إرفاق الإجابات كملف PDF</p>
                                 </div>
-                            </Link>
+                            </button>
 
-                            <Link to="/files" className="glass-widget bg-gradient-to-br from-[#c084fc] to-[#9333ea] p-6 flex flex-col justify-between h-40 cursor-pointer hover:scale-[1.02] border-0 shadow-[0_0_20px_rgba(192,132,252,0.3)]">
+                            <button onClick={() => handleProtectedNavigation('/files')} className="col-span-1 glass-widget bg-gradient-to-br from-[#c084fc] to-[#9333ea] p-6 flex flex-col justify-between h-40 cursor-pointer hover:scale-[1.02] border-0 shadow-[0_0_20px_rgba(192,132,252,0.3)] text-right">
                                 <BookOpen className="w-8 h-8 text-white opacity-90" />
                                 <h3 className="text-lg font-bold text-white leading-tight">شرح الملفات<br />والملازم</h3>
-                            </Link>
+                            </button>
 
-                            <Link to="/generator" className="glass-widget bg-gradient-to-br from-[#fb7185] to-[#e11d48] p-6 flex flex-col justify-between h-40 cursor-pointer hover:scale-[1.02] border-0 shadow-[0_0_20px_rgba(251,113,133,0.3)]">
+                            <button onClick={() => handleProtectedNavigation('/generator')} className="col-span-1 glass-widget bg-gradient-to-br from-[#fb7185] to-[#e11d48] p-6 flex flex-col justify-between h-40 cursor-pointer hover:scale-[1.02] border-0 shadow-[0_0_20px_rgba(251,113,133,0.3)] text-right">
                                 <Video className="w-8 h-8 text-white opacity-90" />
                                 <h3 className="text-lg font-bold text-white leading-tight">مصنع المحتوى<br />الذكي</h3>
-                            </Link>
+                            </button>
                         </div>
 
-                        <Link to="/planner" className="glass-widget mt-4 p-5 flex items-center gap-4 bg-[var(--bg-surface)] backdrop-blur-2xl hover:bg-white/5 transition-colors cursor-pointer border-0">
-                            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                        <button onClick={() => handleProtectedNavigation('/planner')} className="w-full glass-widget mt-4 p-5 flex items-center gap-4 bg-[var(--bg-surface)] backdrop-blur-2xl hover:bg-white/5 transition-colors cursor-pointer border-0 text-right">
+                            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                                 <Activity className="w-6 h-6 text-primary" />
                             </div>
                             <div className="flex-1">
@@ -290,8 +304,8 @@ function MainScreen({ isDarkMode, setIsDarkMode }: { isDarkMode: boolean, setIsD
                                     <div className="bg-gradient-to-r from-secondary to-primary w-[0%] h-full rounded-full" />
                                 </div>
                             </div>
-                            <span className="text-xs font-bold text-secondary">0%</span>
-                        </Link>
+                            <span className="text-xs font-bold text-secondary shrink-0">0%</span>
+                        </button>
                     </motion.div>
 
                 </main>

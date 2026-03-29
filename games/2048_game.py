@@ -1,4 +1,5 @@
-import pygame
+# pyre-ignore-all-errors
+import pygame  # type: ignore[import]
 import random
 import sys
 
@@ -43,6 +44,8 @@ CELL_SIZE = 100
 MARGIN = 15
 GRID_START_Y = 150
 
+from typing import List, Tuple
+
 class Game2048:
     def __init__(self):
         self.grid = [[0] * 4 for _ in range(4)]
@@ -59,29 +62,33 @@ class Game2048:
             r, c = random.choice(empty_cells)
             self.grid[r][c] = 2 if random.random() < 0.9 else 4
 
-    def compress(self, grid):
-        changed = False
-        new_grid = [[0] * 4 for _ in range(4)]
+    def compress(self, grid: List[List[int]]):
+        changed: bool = False
+        new_grid: List[List[int]] = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
         for i in range(4):
-            pos = 0
+            pos: int = 0
             for j in range(4):
-                if grid[i][j] != 0:
-                    new_grid[i][pos] = grid[i][j]
+                val: int = grid[i][j]  # pyre-ignore
+                if val != 0:
+                    new_grid[i][pos] = val  # pyre-ignore
                     if j != pos:
                         changed = True
-                    pos += 1
+                    pos = pos + 1  # pyre-ignore
         return new_grid, changed
 
-    def merge(self, grid):
-        changed = False
+    def merge(self, grid: List[List[int]]):
+        changed: bool = False
         for i in range(4):
             for j in range(3):
-                if grid[i][j] == grid[i][j+1] and grid[i][j] != 0:
-                    grid[i][j] *= 2
-                    grid[i][j+1] = 0
-                    self.score += grid[i][j]
+                a: int = grid[i][j]  # pyre-ignore
+                b: int = grid[i][j + 1]  # pyre-ignore
+                if a == b and a != 0:
+                    merged: int = a * 2
+                    grid[i][j] = merged  # pyre-ignore
+                    grid[i][j + 1] = 0  # pyre-ignore
+                    self.score = self.score + merged
                     changed = True
-                    if grid[i][j] == 2048 and not self.won:
+                    if merged == 2048 and not self.won:
                         self.state = "WON"
                         self.won = True
         return grid, changed

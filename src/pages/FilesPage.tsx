@@ -8,7 +8,7 @@ import { globalVectorStore } from '../lib/rag/vectorStore';
 // import { DocumentUploader } from '../components/NotebookLM/DocumentUploader';
 import { ZamaylSearch } from '../components/NotebookLM/ZamaylSearch';
 import type { ScrapedFile } from '../components/NotebookLM/ZamaylSearch';
-import { FileText, Trash2, Search, Plus, AlertTriangle, FolderPlus } from 'lucide-react';
+import { FileText, Trash2, Search, Plus, AlertTriangle, FolderPlus, Edit2 } from 'lucide-react';
 
 export default function FilesPage() {
     const [savedDocs, setSavedDocs] = useState<ParsedDocument[]>([]);
@@ -22,6 +22,8 @@ export default function FilesPage() {
 
     const [docxHtml, setDocxHtml] = useState<string | null>(null);
     const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
+    const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
+    const [renameInput, setRenameInput] = useState<string>('');
 
     useEffect(() => {
         loadDocs();
@@ -210,6 +212,27 @@ export default function FilesPage() {
         }
     };
 
+    const handleRenameFolder = async () => {
+        if (!renamingFolder || !renameInput.trim() || renamingFolder === renameInput.trim()) {
+            setRenamingFolder(null);
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            await db.renameSubject(renamingFolder, renameInput.trim());
+            await loadDocs();
+            setRenamingFolder(null);
+            setRenameInput('');
+            if (activeSubject === renamingFolder) {
+                setActiveSubject(renameInput.trim());
+            }
+        } catch (e: any) {
+            alert(e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     // Group documents by subjectName
     const subjectsMap = savedDocs.reduce((acc, doc) => {
         const key = doc.subjectName || 'مقرر عام';
@@ -266,9 +289,22 @@ export default function FilesPage() {
                                                     <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
                                                         <svg className="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
                                                     </div>
-                                                    <div>
+                                                    <div className="relative group w-full">
                                                         <h3 className="font-bold text-lg text-[var(--text-main)] group-hover:text-primary transition-colors">{subject}</h3>
                                                         <span className="text-sm font-bold text-[var(--text-muted)]">{docs.filter(d => d.filename !== '_solvica_folder_').length} ملفات</span>
+                                                        
+                                                        {/* Rename Button */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setRenamingFolder(subject);
+                                                                setRenameInput(subject);
+                                                            }}
+                                                            className="absolute -top-2 -left-2 p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary shadow-sm"
+                                                            title="تعديل الاسم"
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -333,7 +369,7 @@ export default function FilesPage() {
                                                         <h4 className="font-bold text-[var(--text-main)] truncate max-w-[200px] sm:max-w-xs">{doc.filename}</h4>
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-2 w-full sm:w-auto justify-end sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                <div className="flex gap-2 w-full sm:w-auto justify-end transition-opacity shrink-0">
                                                     <button
                                                         onClick={() => setViewingDoc(doc)}
                                                         className="px-4 py-1.5 text-sm font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors border-0"
@@ -357,24 +393,24 @@ export default function FilesPage() {
 
                     {/* Right Column: Actions */}
                     <div className="space-y-6">
-                        <div className="glass-widget rounded-3xl p-2 flex">
+                        <div className="glass-widget rounded-3xl p-2 flex flex-wrap">
                             <button
                                 onClick={() => setActiveTab('create_folder')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold transition-all ${activeTab === 'create_folder' ? 'bg-[var(--bg-surface)] shadow-md text-primary border border-[var(--border-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 py-3 rounded-2xl font-bold transition-all text-sm sm:text-base ${activeTab === 'create_folder' ? 'bg-[var(--bg-surface)] shadow-md text-primary border border-[var(--border-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
                             >
-                                <FolderPlus className="w-5 h-5" />
-                                إنشاء مجلد مادة
+                                <FolderPlus className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                                <span className="truncate">إنشاء مجلد مادة</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('search')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold transition-all ${activeTab === 'search' ? 'bg-[var(--bg-surface)] shadow-md text-secondary border border-[var(--border-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 py-3 rounded-2xl font-bold transition-all text-sm sm:text-base ${activeTab === 'search' ? 'bg-[var(--bg-surface)] shadow-md text-secondary border border-[var(--border-color)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
                             >
-                                <Search className="w-5 h-5" />
-                                البحث في موقع زميل
+                                <Search className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                                <span className="truncate">البحث في موقع زميل</span>
                             </button>
                         </div>
 
-                        <div className="glass-widget rounded-3xl p-8 relative overflow-hidden min-h-[400px]">
+                        <div className="glass-widget rounded-3xl p-4 sm:p-8 relative overflow-hidden min-h-[400px]">
                             {isProcessing && (
                                 <div className="absolute inset-0 bg-[var(--glass-bg)] backdrop-blur-sm z-50 flex flex-col items-center justify-center">
                                     <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
@@ -427,6 +463,38 @@ export default function FilesPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Folder Rename Dialog */}
+                {renamingFolder && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" dir="rtl">
+                        <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl w-full max-w-sm shadow-2xl p-8">
+                            <h3 className="text-xl font-black text-[var(--text-main)] mb-4 text-center">تعديل اسم المجلد</h3>
+                            <label className="block text-sm font-bold text-[var(--text-muted)] mb-2">الاسم الجديد:</label>
+                            <input
+                                type="text"
+                                value={renameInput}
+                                onChange={(e) => setRenameInput(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleRenameFolder(); }}
+                                className="w-full bg-[var(--bg-dashboard)] border border-[var(--border-color)] text-[var(--text-main)] rounded-xl px-4 py-3 font-bold focus:border-primary focus:outline-none mb-6"
+                                autoFocus
+                            />
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setRenamingFolder(null)}
+                                    className="flex-1 px-4 py-2.5 rounded-xl font-bold text-[var(--text-main)] border border-[var(--border-color)] hover:bg-[var(--hover-bg)] transition-colors"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    onClick={handleRenameFolder}
+                                    className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-primary hover:bg-primary-dark text-white transition-colors shadow-lg"
+                                >
+                                    حفظ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Folder Delete Confirmation Dialog */}
                 {folderToDelete && (

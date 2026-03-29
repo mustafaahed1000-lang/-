@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Home, BookOpen, Activity, MessageSquare, Settings, Gamepad2, BrainCircuit, CheckSquare } from 'lucide-react';
+import { X, Home, BookOpen, Activity, MessageSquare, Settings, Gamepad2, BrainCircuit, CheckSquare, ClipboardList, Mail, Camera } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import SettingsModal from './SettingsModal';
 
@@ -18,8 +18,10 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         { icon: <CheckSquare className="w-5 h-5 text-emerald-500" />, label: 'حل الواجبات', path: '/solver' },
         { icon: <BookOpen className="w-5 h-5 text-indigo-500" />, label: 'تلخيص ذكي', path: '/generator' },
         { icon: <Activity className="w-5 h-5" />, label: 'خطتي الدراسية', path: '/planner' },
+        { icon: <ClipboardList className="w-5 h-5 text-amber-500" />, label: 'سجل اختباراتي', path: '/quiz-history' },
         { icon: <Gamepad2 className="w-5 h-5 text-secondary" />, label: 'الألعاب التفاعلية', path: '/games' },
         { icon: <BrainCircuit className="w-5 h-5" />, label: 'المستشار الأكاديمي', path: '/advisor' },
+        { icon: <Mail className="w-5 h-5 text-indigo-400" />, label: 'تواصل معنا', path: '/contact' },
     ];
 
     return (

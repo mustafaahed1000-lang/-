@@ -12,24 +12,31 @@ import SolverPage from './pages/SolverPage';
 import GeneratorPage from './pages/GeneratorPage';
 import FeaturesPage from './pages/FeaturesPage';
 import HowItWorksPage from './pages/HowItWorksPage';
+import ContactPage from './pages/ContactPage';
+import AuthGuard from './components/AuthGuard';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/advisor" element={<Advisor />} />
-        <Route path="/planner" element={<Planner />} />
-        <Route path="/games" element={<Games />} />
-        <Route path="/games/tic-tac-toe" element={<TicTacToe />} />
-        <Route path="/course-challenge" element={<CourseChallenge />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/files" element={<FilesPage />} />
-        <Route path="/solver" element={<SolverPage />} />
-        <Route path="/generator" element={<GeneratorPage />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/how-it-works" element={<HowItWorksPage />} />
+        
+        {/* Protected Routes */}
+        <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+        <Route path="/advisor" element={<AuthGuard><Advisor /></AuthGuard>} />
+        <Route path="/planner" element={<AuthGuard><Planner /></AuthGuard>} />
+        <Route path="/games" element={<AuthGuard><Games /></AuthGuard>} />
+        <Route path="/games/tic-tac-toe" element={<AuthGuard><TicTacToe /></AuthGuard>} />
+        <Route path="/course-challenge" element={<AuthGuard><CourseChallenge /></AuthGuard>} />
+        <Route path="/chat" element={<AuthGuard><ChatPage /></AuthGuard>} />
+        <Route path="/files" element={<AuthGuard><FilesPage /></AuthGuard>} />
+        <Route path="/solver" element={<AuthGuard><SolverPage /></AuthGuard>} />
+        <Route path="/generator" element={<AuthGuard><GeneratorPage /></AuthGuard>} />
+        <Route path="/quiz-history" element={<AuthGuard><CourseChallenge /></AuthGuard>} />
+        <Route path="/contact" element={<AuthGuard><ContactPage /></AuthGuard>} />
       </Routes>
     </BrowserRouter>
   );

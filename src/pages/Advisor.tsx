@@ -121,7 +121,7 @@ export default function Advisor() {
                                         onChange={e => setFormData({ ...formData, major: e.target.value })}
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-4 items-end">
                                     <div>
                                         <label className="block text-sm font-bold text-[var(--text-main)] mb-2">المعدل التراكمي</label>
                                         <input

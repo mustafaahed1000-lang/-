@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import SettingsModal from '../components/SettingsModal';
-import { Menu, Bell, Moon, Sun, Settings } from 'lucide-react';
+import { Menu, Moon, Sun, Settings } from 'lucide-react';
 
 interface AppLayoutProps {
     children: React.ReactNode;
+    fullWidth?: boolean;
 }
 
-export default function AppLayout({ children }: AppLayoutProps) {
+export default function AppLayout({ children, fullWidth = false }: AppLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [user, setUser] = useState<any>(() => {
@@ -63,8 +64,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         >
                             <Menu className="w-5 h-5" />
                         </button>
-                        <h2 className="text-sm sm:text-lg font-bold hidden sm:block text-[var(--text-main)] truncate">
-                            {displayName ? `مرحباً ${displayName} 👋` : 'مرحباً بك 👋'}
+                        <h2 className="text-sm sm:text-lg font-bold text-[var(--text-main)] truncate max-w-[200px] sm:max-w-none flex items-center gap-2 sm:gap-3">
+                            <span>{displayName ? `مرحباً ${displayName} 👋` : 'مرحباً، طالب ضيف 👋'}</span>
+                            <span className="text-[9px] sm:text-xs font-black px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shrink-0 uppercase tracking-wider">نسخة تجريبية Beta</span>
                         </h2>
                     </div>
 
@@ -75,10 +77,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         >
                             {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                         </button>
-                        <button className="w-9 h-9 rounded-full glass-widget flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] relative">
-                            <Bell className="w-4 h-4" />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full animate-pulse shadow-[0_0_10px_rgba(255,60,172,0.8)]" />
-                        </button>
+
                         <button
                             onClick={() => setSettingsOpen(true)}
                             className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2ba396] to-[#238b7f] border border-[#2ba396]/30 flex items-center justify-center overflow-hidden shadow-md hover:scale-105 transition-transform flex-shrink-0"
@@ -95,7 +94,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     </div>
                 </header>
 
-                <div className="p-4 lg:p-6 space-y-6 flex-1 overflow-x-hidden relative z-10 w-full max-w-7xl mx-auto">
+                <div className={`p-4 lg:p-6 space-y-6 flex-1 overflow-x-hidden relative z-10 w-full mx-auto ${fullWidth ? 'max-w-none' : 'max-w-7xl'}`}>
                     {children}
                 </div>
             </main>

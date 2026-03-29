@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap');
+@import "katex/dist/katex.min.css";
 
 @tailwind base;
 @tailwind components;
@@ -72,9 +73,43 @@
   background: #00d4ff;
 }
 
-/* AI HTML Content Styles */
+/* AI HTML Content Styles & Markdown PDF Formatting */
+
+.html-content h1, .html-content h2 {
+  @apply text-xl md:text-2xl font-black text-white bg-gradient-to-l from-primary to-[#ff3cac] p-4 rounded-xl shadow-lg border-2 border-primary mb-6 !important;
+  text-align: right;
+  position: relative;
+}
+
+.html-content h1::after, .html-content h2::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background-color: #ffffff;
+  border-radius: 0 8px 8px 0;
+}
+
+.html-content h3, .html-content h4 {
+  @apply text-lg font-bold text-primary mb-4 p-3 bg-primary/10 rounded-lg border-r-4 border-primary !important;
+}
+
+.html-content p {
+  @apply mb-4 leading-relaxed text-[var(--text-main)];
+}
+
+.html-content blockquote {
+  @apply bg-[#ff3cac]/10 border-r-4 border-[#ff3cac] p-4 rounded-lg my-6 !important;
+}
+
+.html-content blockquote p {
+  @apply text-[#ff3cac] font-bold m-0 !important;
+}
+
 .html-content table {
-  @apply w-full text-right border-collapse my-6 overflow-hidden rounded-xl border-hidden shadow-lg;
+  @apply w-full text-right border-collapse my-6 overflow-hidden rounded-xl border border-[var(--border-color)] shadow-lg;
 }
 
 .html-content th,
@@ -95,11 +130,27 @@
 }
 
 .html-content ul {
-  @apply list-disc list-inside space-y-3 my-4 pr-4;
+  @apply list-none space-y-3 my-4 pr-4;
+}
+
+.html-content ul li {
+  @apply relative pr-6;
+}
+
+.html-content ul li::before {
+  content: '🔹';
+  position: absolute;
+  right: -5px;
+  top: 2px;
+  font-size: 14px;
 }
 
 .html-content ol {
-  @apply list-decimal list-inside space-y-3 my-4 pr-4;
+  @apply list-decimal space-y-3 my-4 pr-6 font-bold text-primary;
+}
+
+.html-content ol li span {
+  @apply font-normal text-[var(--text-main)];
 }
 
 /* 
@@ -120,4 +171,49 @@ iframe[src*="puter"],
   position: absolute !important;
   width: 0 !important;
   height: 0 !important;
+}
+
+/* 💎 HyperRush V13 Premium UI Styles 💎 */
+.chat-bubble-user {
+  @apply bg-gradient-to-br from-[#2ba396] to-[#1e7a70] text-white shadow-[0_8px_25px_-5px_#2ba39666] border border-white/10;
+}
+
+.chat-bubble-assistant {
+  @apply bg-[var(--bg-surface)] backdrop-blur-xl border border-[var(--border-color)] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] transition-all duration-500 hover:shadow-[0_15px_40px_-5px_rgba(43,163,150,0.15)];
+}
+
+.thinking-pulse {
+  @apply animate-pulse bg-gradient-to-r from-[#2ba396]/20 to-teal-500/10 border border-[#2ba396]/30;
+}
+
+.glass-header {
+  @apply sticky top-0 backdrop-blur-2xl border-b border-[var(--border-color)] z-40 transition-all duration-300;
+  background-color: var(--bg-background); /* Simplified for stability */
+}
+
+/* Smooth code block appearance */
+.html-content pre {
+  @apply rounded-2xl border border-white/5 shadow-2xl !important;
+  opacity: 0;
+  transform: scale(0.95);
+  animation: fadeInZoom 0.5s ease-out forwards;
+}
+
+@keyframes fadeInZoom {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Mobile chat bubble overrides */
+@media (max-width: 768px) {
+  .chat-bubble-assistant,
+  .chat-bubble-user {
+    font-size: 14px !important;
+    max-width: 88% !important;
+    text-align: right !important;
+    direction: rtl !important;
+    line-height: 1.7 !important;
+    word-break: normal !important;
+    white-space: normal !important;
+  }
 }

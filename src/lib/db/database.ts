@@ -27,7 +27,7 @@ export interface ChatSession {
 
 export interface SavedActivity {
     id: string;
-    type: 'solver' | 'summary' | 'other';
+    type: 'solver' | 'summary' | 'plan' | 'other';
     title: string;
     content: string;
     chatHistory: AIChatMessage[];
@@ -99,5 +99,17 @@ export const db = {
 
     async deleteActivity(id: string): Promise<void> {
         await activitiesStore.removeItem(id);
+    },
+
+    // --- Subject/Folder Methods ---
+    async renameSubject(oldName: string, newName: string): Promise<void> {
+        const allDocs = await this.getAllDocuments();
+        const updatePromises = allDocs
+            .filter(doc => doc.subjectName === oldName)
+            .map(doc => {
+                doc.subjectName = newName;
+                return this.saveDocument(doc);
+            });
+        await Promise.all(updatePromises);
     }
 };

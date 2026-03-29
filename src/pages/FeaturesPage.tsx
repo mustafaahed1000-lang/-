@@ -6,15 +6,15 @@ export default function FeaturesPage() {
     return (
         <div className="min-h-screen bg-[var(--bg-background)] text-[var(--text-main)]" dir="rtl">
             {/* Simple Independent Header */}
-            <header className="p-6 flex justify-between items-center max-w-6xl mx-auto z-50 relative">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2ba396] to-[#238b7f] flex items-center justify-center shadow-md">
-                        <span className="text-white font-black text-sm">S</span>
+            <header className="p-4 sm:p-6 flex justify-between items-center max-w-6xl mx-auto z-50 relative">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#2ba396] to-[#238b7f] flex items-center justify-center shadow-md">
+                        <span className="text-white font-black text-xs sm:text-sm">S</span>
                     </div>
-                    <span className="text-xl font-display font-bold tracking-widest text-[var(--text-main)]">SOLVICA</span>
+                    <span className="text-lg sm:text-xl font-display font-bold tracking-widest text-[var(--text-main)]">SOLVICA</span>
                 </div>
-                <Link to="/" className="flex items-center gap-2 text-sm font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors bg-[var(--bg-surface)] px-4 py-2 rounded-full border border-[var(--border-color)] shadow-sm">
-                    العودة للرئيسية <Home className="w-4 h-4 mr-1" />
+                <Link to="/" className="flex items-center justify-center w-10 h-10 text-[var(--text-muted)] hover:text-red-500 bg-[var(--bg-surface)] rounded-full border border-[var(--border-color)] shadow-sm transition-colors">
+                    <Home className="w-5 h-5" />
                 </Link>
             </header>
 

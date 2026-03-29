@@ -91,7 +91,7 @@ export default function Dashboard() {
                             recentFiles.map(doc => (
                                 <FileRow
                                     key={doc.id}
-                                    name={doc.filename}
+                                    name={doc.filename.replace('_solvica_folder_', '')}
                                     date="تم الرفع حديثاً"
                                     size={`${doc.chunks?.length || 0} قسم`}
                                     onClick={() => navigate(`/chat?file=${encodeURIComponent(doc.filename)}`)}

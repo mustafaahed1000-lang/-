@@ -7,6 +7,8 @@ import { exportToPDF } from '../lib/utils/pdfExport';
 import { BookOpen, FileText, Loader2, Download, CheckCircle, History, Send, Trash2, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 export default function GeneratorPage() {
     const [savedDocs, setSavedDocs] = useState<any[]>([]);
@@ -52,37 +54,24 @@ export default function GeneratorPage() {
                 ? doc.chunks.map((c: any) => c.text)
                 : typeof doc.chunks[0] === 'string' ? doc.chunks : [];
 
-            // Use ALL chunks for exam files (don't cut context)
-            const contextStr = rawTextChunks.join('\n---\n').substring(0, 40000);
+            // Massive expansion for precise summarization (100k characters for a single book)
+            const contextStr = rawTextChunks.join('\n---\n').substring(0, 100000);
 
-            const userQuery = prompt || "دليل دراسي شامل وتلخيص عميق لكل المفاهيم والأمثلة والتعريفات";
+            const userQuery = prompt || "قم باستخراج وتلخيص جميع المفاهيم والتعريفات والأمثلة والقوانين بدقة متناهية.";
 
-            const sysPrompt = `أنت المساعد الأكاديمي الذكي (Solvica).
+            const sysPrompt = `أنت خبير في التلخيص الأكاديمي وإنشاء المذكرات التعليمية الاحترافية. قم بتلخيص المحتوى المرفق باتباع القواعد التالية بدقة متناهية:
+1. الهيكلية: ابدأ بفهرس محتويات سريع، ثم قسم التلخيص إلى فصول ووحدات كما في المصدر، مع عنوان رئيسي (# الملخص الشامل).
+2. الجداول: أي مقارنة أو قائمة مفاهيم (مثل التعاريف، الأنواع، المعايير) يجب وضعها في جداول Markdown منظمة تشمل (الاسم، الشرح المبسط، ومثال توضيحي إن وجد).
+3. التنسيق: استخدم لغة عربية فصحى رصينة. استخدم الخط العريض للكلمات المفتاحية. ضع فواصل أفقية (---) بين الأقسام الكبيرة. استخدم رموز KaTeX للمعادلات الرياضية ($).
+4. المحتوى: ركز على النقاط الجوهرية والأسئلة المتوقعة. اجعل التلخيص شاملاً ولكن بأسلوب نقاط مركزة بدلاً من الفقرات الطويلة. أضف قسم "🎯 أهم ما يجب تذكره" في النهاية.
+5. المخرجات: النتيجة يجب أن تكون بتنسيق Markdown صافٍ وأنيق. يمنع منعاً باتاً طباعة أي أكواد JSON أو أدوات بحث أو نصوص تقنية في إجابتك.
 
-=== محتوى المستند المرفق ===
+=== محتوى المستند المرفق حصرياً ===
 ${contextStr}
-=== نهاية المحتوى ===
+=== نهاية المحتوى ===`;
 
-تعليمات مهمة جداً:
-
-**تحليل نوع الملف أولاً (إلزامي):**
-إذا كان النص يحتوي على أي من: أسئلة امتحان، أسئلة سابقة، تمارين، واجبات محلولة أو غير محلولة:
-→ **وظيفتك هي: حل كل سؤال بالترتيب مع شرح تفصيلي لكل خطوة.**
-- إذا كان السؤال محلولاً في الملف: اشرح لماذا هذا الجواب صحيح خطوة بخطوة.
-- إذا كان السؤال غير محلول: حله بنفسك مع شرح كامل.
-- **لا تتجاوز أي سؤال بدون خطوة حل.**
-- رقّم كل سؤال بوضوح: سؤال 1، سؤال 2، إلخ.
-
-إذا كان الملف نظرياً (كتاب دراسي):
-→ اعمل تلخيصاً شاملاً بالتفصيل لكل فصل مع أمثلة وتعريفات.
-
-**التنسيق الإجباري:** HTML كامل مع جداول ملونة، عناوين واضحة، ولون لكل سؤال. لا تكتب أي نص خارج HTML.
-
-الطلب: ${userQuery}`;
-
-            const response = await aiClient.chat([{ role: 'user', content: 'قدم المحتوى بصيغة HTML نظيفة، ابدأ بـ <div> وأنه بـ </div>، لا تكتب شيئاً خارج HTML.' }], { model: 'gpt-4o' }, sysPrompt);
-            const cleanedHTML = response.replace(/^```html|```$/gm, '').trim();
-            setGeneratedContent(cleanedHTML);
+            const response = await aiClient.chat([{ role: 'user', content: userQuery || 'اكتب التلخيص الأكاديمي الشامل الآن استناداً إلى نصوص المنهج المرفقة فقط، مع التجاهل التام لأي مقدمات أو وصف للملف نفسه.' }], undefined, sysPrompt);
+            setGeneratedContent(response);
             setChatHistory([]);
 
             // Save Activity
@@ -90,7 +79,7 @@ ${contextStr}
                 id: `act_${Date.now()}`,
                 type: 'summary' as const,
                 title: userQuery.substring(0, 40) + '...',
-                content: cleanedHTML,
+                content: response,
                 chatHistory: [],
                 updatedAt: Date.now()
             };
@@ -162,37 +151,39 @@ ${contextStr}
         <AppLayout>
             {isHistoryOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex justify-end transition-opacity" dir="rtl" onClick={() => setIsHistoryOpen(false)}>
-                    <div className="w-full max-w-sm h-full bg-[var(--bg-surface)] border-l border-[var(--border-color)] p-6 overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-black text-[var(--text-main)] flex items-center gap-3">
-                                <History className="w-6 h-6 text-[#2ba396]" />
+                    <div className="w-full max-w-sm h-[100dvh] pt-12 sm:pt-0 bg-[var(--bg-surface)] border-l border-[var(--border-color)] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 sticky top-0 bg-[var(--bg-surface)] z-10 flex justify-between items-center border-b border-[var(--border-color)] shrink-0">
+                            <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)] flex items-center gap-3">
+                                <History className="w-5 h-5 sm:w-6 sm:h-6 text-[#2ba396]" />
                                 سجل الأدلة الدراسية
                             </h2>
-                            <button onClick={() => setIsHistoryOpen(false)} className="text-[var(--text-muted)] hover:text-red-500 bg-[var(--bg-background)] p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                            <button onClick={() => setIsHistoryOpen(false)} className="w-9 h-9 flex items-center justify-center bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors shadow-sm shrink-0"><X className="w-5 h-5" /></button>
                         </div>
-                        {savedActivities.length === 0 ? (
-                            <div className="text-center py-10 opacity-70">
-                                <History className="w-16 h-16 text-[var(--text-muted)] mx-auto mb-4" />
-                                <p className="text-[var(--text-muted)] font-bold">لا يوجد سجل محفوظ.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {savedActivities.map(act => (
-                                    <div key={act.id} onClick={() => loadPastActivity(act)} className={`p-4 rounded-xl border transition-all cursor-pointer group hover:-translate-y-1 shadow-sm hover:shadow-md ${loadedActivityId === act.id ? 'border-[#2ba396] bg-[#2ba396]/10 shadow-[#2ba396]/10' : 'border-[var(--border-color)] hover:border-[#2ba396]/50 bg-[var(--bg-background)]'}`}>
-                                        <h4 className="font-bold text-[var(--text-main)] mb-2 truncate" title={act.title}>{act.title || 'دليل دراسي'}</h4>
-                                        <div className="flex justify-between items-center">
-                                            <p className="text-xs font-bold text-[var(--text-muted)]">{new Date(act.updatedAt).toLocaleDateString('ar-EG')}</p>
-                                            <span className="text-xs bg-[#2ba396]/10 text-[#2ba396] px-2 py-1 rounded-md font-bold">{act.chatHistory?.length || 0} رسالة</span>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {savedActivities.length === 0 ? (
+                                <div className="text-center py-10 opacity-70">
+                                    <History className="w-16 h-16 text-[var(--text-muted)] mx-auto mb-4" />
+                                    <p className="text-[var(--text-muted)] font-bold">لا يوجد سجل محفوظ.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {savedActivities.map(act => (
+                                        <div key={act.id} onClick={() => loadPastActivity(act)} className={`p-4 rounded-xl border transition-all cursor-pointer group hover:-translate-y-1 shadow-sm hover:shadow-md ${loadedActivityId === act.id ? 'border-[#2ba396] bg-[#2ba396]/10 shadow-[#2ba396]/10' : 'border-[var(--border-color)] hover:border-[#2ba396]/50 bg-[var(--bg-background)]'}`}>
+                                            <h4 className="font-bold text-[var(--text-main)] mb-2 truncate" title={act.title}>{act.title || 'دليل دراسي غير مسمى'}</h4>
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-xs font-bold text-[var(--text-muted)]">{new Date(act.updatedAt).toLocaleDateString('ar-EG')}</p>
+                                                <span className="text-xs bg-[#2ba396]/10 text-[#2ba396] px-2 py-1 rounded-md font-bold">{act.chatHistory?.length || 0} رسالة</span>
+                                            </div>
+                                            <div className="mt-3 text-left">
+                                                <button onClick={(e) => deleteActivity(act.id, e)} className="text-red-500 hover:text-white transition-opacity p-2 bg-red-500/10 hover:bg-red-500 rounded-lg shrink-0 flex items-center justify-center opacity-100 always-visible">
+                                                    <Trash2 className="w-5 h-5 sm:w-4 sm:h-4" />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div className="mt-3 text-left">
-                                            <button onClick={(e) => deleteActivity(act.id, e)} className="text-red-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-red-500/10 hover:bg-red-500 rounded-lg">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -208,12 +199,12 @@ ${contextStr}
                             </h1>
                             <p className="text-[var(--text-muted)] font-medium">حول كتبك إلى ملخصات مركزة ودقيقة حسب الوحدة المطلوبة للتحضير السريع للامتحانات.</p>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="bg-[#2ba396]/10 text-[#2ba396] px-6 py-3 rounded-2xl font-bold border border-[#2ba396]/20 shadow-sm flex items-center gap-2">
-                                <CheckCircle className="w-5 h-5" /> دقة NotebookLM
+                        <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center sm:justify-start">
+                            <div className="bg-[#2ba396]/10 text-[#2ba396] px-3 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl font-bold border border-[#2ba396]/20 shadow-sm flex items-center gap-1.5 sm:gap-2 text-xs sm:text-base whitespace-nowrap">
+                                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" /> دقة NotebookLM
                             </div>
-                            <button onClick={() => setIsHistoryOpen(true)} className="flex items-center gap-2 bg-[var(--widget-bg)] border border-[var(--border-color)] hover:border-indigo-500 text-[var(--text-main)] px-4 py-3 rounded-2xl transition-all font-bold">
-                                <History className="w-5 h-5" />
+                            <button onClick={() => setIsHistoryOpen(true)} className="flex items-center gap-1.5 sm:gap-2 bg-[var(--widget-bg)] border border-[var(--border-color)] hover:border-indigo-500 text-[var(--text-main)] px-3 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl transition-all font-bold text-xs sm:text-base whitespace-nowrap">
+                                <History className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                                 السجل السريع
                             </button>
                         </div>
@@ -226,11 +217,11 @@ ${contextStr}
 
                             {/* Reference Selection */}
                             <div>
-                                <label className="block text-sm font-bold text-[var(--text-main)] mb-3">حدد المادة لاستخراج الملخص منها بدقة:</label>
+                                <label className="block text-sm font-bold text-[var(--text-main)] mb-3">حدد المادة لاستخراج الملخص منها بدقة (كتاب واحد فقط):</label>
                                 <select
                                     value={selectedDocId}
                                     onChange={e => setSelectedDocId(e.target.value)}
-                                    className="w-full bg-[var(--bg-surface)] border-2 border-slate-200 rounded-xl p-4 text-[var(--text-main)] font-bold text-lg focus:ring-4 focus:ring-[#2ba396]/20 focus:border-[#2ba396] outline-none transition-all shadow-sm cursor-pointer"
+                                    className="w-full bg-[var(--bg-surface)] border-2 border-[var(--border-color)] rounded-xl p-4 text-[var(--text-main)] font-bold text-lg focus:ring-4 focus:ring-[#2ba396]/20 focus:border-[#2ba396] outline-none transition-all shadow-sm cursor-pointer"
                                 >
                                     <option value="" disabled>-- اضغط لاختيار مرجع --</option>
                                     {savedDocs.filter(d => d.filename !== '_solvica_folder_').map(doc => (
@@ -294,7 +285,9 @@ ${contextStr}
                                 {/* PDF DISPLAY */}
                                 {generatedContent && !isGenerating && (
                                     <div className="w-full flex flex-col h-full relative" ref={contentRef}>
-                                        <div id="generation-output" className="bg-white text-black p-10 rounded-2xl shadow-sm border border-slate-100 mb-6" dangerouslySetInnerHTML={{ __html: generatedContent }} />
+                                        <div id="generation-output" className="html-content bg-[var(--bg-surface)] p-10 rounded-2xl shadow-sm border border-[var(--border-color)] mb-6 prose prose-slate dark:prose-invert max-w-none text-[var(--text-main)] font-medium transition-colors duration-300 prose-headings:text-[var(--text-main)] prose-strong:text-[var(--text-main)] prose-p:text-[var(--text-main)] prose-li:text-[var(--text-main)] prose-table:text-[var(--text-main)]" style={{ lineHeight: '2.2', direction: 'rtl', textAlign: 'right' }}>
+                                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, { strict: false }]]}>{generatedContent}</ReactMarkdown>
+                                        </div>
 
                                         {/* Chat History */}
                                         {chatHistory.length > 0 && (
@@ -306,8 +299,8 @@ ${contextStr}
                                                 {chatHistory.map((msg, i) => (
                                                     <div key={i} className={`p-5 rounded-2xl max-w-[85%] ${msg.role === 'user' ? 'bg-[#2ba396]/10 border border-[#2ba396]/20 text-[#238b7f] mr-auto rounded-tr-sm' : 'bg-[var(--bg-background)] border border-[var(--border-color)] text-[var(--text-main)] ml-auto rounded-tl-sm'}`}>
                                                         {msg.role === 'assistant' ? (
-                                                            <div className="prose prose-slate dark:prose-invert max-w-none text-sm text-[var(--text-main)] leading-loose text-right" dir="rtl">
-                                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content as string}</ReactMarkdown>
+                                                            <div className="html-content prose prose-slate dark:prose-invert max-w-none text-sm text-[var(--text-main)] leading-loose text-right" dir="rtl">
+                                                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, { strict: false }]]}>{msg.content as string}</ReactMarkdown>
                                                             </div>
                                                         ) : (
                                                             <div className="font-bold">{msg.content as string}</div>
