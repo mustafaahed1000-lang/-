@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap');
 @import "katex/dist/katex.min.css";
 
-/* Core Tailwind directives (These 3 lines will always show a yellow warning in VS Code, but they are REQUIRED for Tailwind to work!) */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Core Tailwind directives (Using @import directly bypasses VS Code's "Unknown at rule" warning) */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 @layer base {
   :root {
