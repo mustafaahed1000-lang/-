@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Home, BookOpen, Activity, MessageSquare, Settings, Gamepad2, BrainCircuit, CheckSquare, ClipboardList, Mail, Camera } from 'lucide-react';
+import { X, Home, BookOpen, Activity, MessageSquare, Settings, Gamepad2, BrainCircuit, CheckSquare, ClipboardList, Mail } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import SettingsModal from './SettingsModal';
 
@@ -55,7 +55,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                             key={index}
                             to={item.path}
                             onClick={() => setIsOpen(false)}
-                            className={({ isActive }) => `flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-all duration-300 ${isActive ? 'bg-primary/10 text-primary shadow-[0_0_20px_rgba(123,47,255,0.1)] border border-primary/20 border-r-2 border-r-primary' : 'text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-main)]'}`}
+                            className={({ isActive }: { isActive: boolean }) => `flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-all duration-300 ${isActive ? 'bg-primary/10 text-primary shadow-[0_0_20px_rgba(123,47,255,0.1)] border border-primary/20 border-r-2 border-r-primary' : 'text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-main)]'}`}
                         >
                             {item.icon}
                             <span>{item.label}</span>
