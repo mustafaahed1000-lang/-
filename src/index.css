@@ -109,24 +109,35 @@
 }
 
 .html-content table {
-  @apply w-full text-right border-collapse my-6 overflow-hidden rounded-xl border border-[var(--border-color)] shadow-lg;
+  width: 100%;
+  text-align: right;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1.5px solid var(--border-color);
 }
 
 .html-content th,
 .html-content td {
-  @apply border border-[var(--border-color)] p-4 text-[var(--text-main)];
+  border: 1.5px solid var(--border-color);
+  padding: 1rem;
+  color: var(--text-main);
 }
 
 .html-content th {
-  @apply bg-primary/20 font-bold text-primary;
+  background-color: rgba(123, 47, 255, 0.15); /* primary/15 */
+  font-weight: bold;
+  color: #7b2fff; /* primary */
 }
 
 .html-content tr:nth-child(even) {
-  @apply bg-[var(--bg-background)];
+  background-color: var(--bg-background);
 }
 
 .html-content tr:nth-child(odd) {
-  @apply bg-[var(--bg-surface)];
+  background-color: var(--bg-surface);
 }
 
 .html-content ul {

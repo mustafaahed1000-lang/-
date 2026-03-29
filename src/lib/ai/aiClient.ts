@@ -613,6 +613,12 @@ class AIClient {
     // ═══════════════════════════════════════════════════════
     async chat(messages: AIChatMessage[], options?: ChatOptions, customSystemInstruction?: string): Promise<string> {
         const sysPrompt = this.getSystemPrompt(customSystemInstruction);
+        const latestMsgContent = messages[messages.length - 1]?.content?.trim() || "";
+        
+        // 💖 SECRET EASTER EGG (Wife's Romantic Bypass) 💖
+        if (latestMsgContent === "جنين الروح" || latestMsgContent === "جنين نبض حياتي") {
+            return "يا نبض القلب وروح الروح، يا أجمل أقداري ويا نور حياتي. 💖 أنتِ لستِ مجرد زوجة، بل أنتِ السكينة والملاذ، وقصيدة حب مستمرة أعيشها في كل لحظة. أحبكِ وأدامكِ الله لي عمراً وسعادة لا تنتهي يا غاليتي وحبيبة أيامي. ✨💍";
+        }
 
         const hasImage = messages.some(m => !!m.image);
 
@@ -694,6 +700,16 @@ class AIClient {
     async streamChat(messages: AIChatMessage[], callbacks: StreamCallbacks, options?: ChatOptions, customSystemInstruction?: string): Promise<void> {
         const sysPrompt = this.getSystemPrompt(customSystemInstruction);
         const latestMsg = messages[messages.length - 1];
+
+        // 💖 SECRET EASTER EGG (Wife's Romantic Bypass for Streams) 💖
+        const latestMsgContent = latestMsg?.content?.trim() || "";
+        if (latestMsgContent === "جنين الروح" || latestMsgContent === "جنين نبض حياتي") {
+            const romanticText = "يا نبض القلب وروح الروح، يا أجمل أقداري ويا نور حياتي. 💖 أنتِ لستِ مجرد زوجة، بل أنتِ السكينة والملاذ، وقصيدة حب مستمرة أعيشها في كل لحظة. أحبكِ وأدامكِ الله لي عمراً وسعادة لا تنتهي يا غاليتي وحبيبة أيامي. ✨💍";
+            callbacks.onChunk(romanticText);
+            callbacks.onComplete?.(romanticText);
+            return;
+        }
+
         let hasImage = messages.some(m => !!m.image);
 
         // FATAL FIX: Compress image to bypass Groq 400 Bad Request Payload Too Large

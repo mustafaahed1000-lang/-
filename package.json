@@ -23,6 +23,7 @@
     "html2pdf.js": "^0.14.0",
     "jspdf": "^4.2.0",
     "jwt-decode": "^4.0.0",
+    "katex": "^0.16.44",
     "localforage": "^1.10.0",
     "mammoth": "^1.11.0",
     "pdf-parse": "^2.4.5",
@@ -30,7 +31,9 @@
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "react-to-print": "^3.3.0",
+    "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "three": "^0.183.1"
   },
   "devDependencies": {
