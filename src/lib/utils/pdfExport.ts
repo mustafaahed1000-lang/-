@@ -82,38 +82,34 @@ export const exportToPDF = async (elementRef: React.RefObject<HTMLElement | HTML
       code { background: #f1f5f9 !important; color: #b91c1c !important; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; font-weight: bold; border: 1px solid #cbd5e1;}
       
       table { 
-        border-collapse: separate; 
-        border-spacing: 0; 
+        border-collapse: collapse; 
         width: 100%; 
         margin: 30px 0; 
         background: #fff; 
-        border-radius: 12px; 
-        overflow: hidden;
-        border: 1px solid #cbd5e1; 
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         page-break-inside: auto; 
+        border: 2px solid #94a3b8;
       }
-      tr { page-break-inside: avoid; page-break-after: auto; transition: all 0.2s; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
       tr:nth-child(even) td { background: #f8fafc !important; }
-      thead { display: table-header-group; background: #0f172a !important; }
+      thead { display: table-header-group; background: #f1f5f9 !important; }
       th { 
-        padding: 16px 20px; 
+        padding: 14px 16px; 
         text-align: right; 
         font-weight: 900; 
-        color: #ffffff !important; 
+        color: #0f172a !important; 
         font-size: 15px; 
-        border-bottom: 2px solid #1e293b; 
-        background-color: #0f172a !important;
+        border: 1.5px solid #94a3b8;
+        background-color: rgba(123, 47, 255, 0.1) !important;
       }
       td { 
-        border-bottom: 1px solid #e2e8f0; 
-        padding: 14px 20px; 
+        border: 1px solid #cbd5e1;
+        padding: 12px 16px; 
         text-align: right; 
         font-size: 14px; 
-        color: #334155 !important; 
+        color: #1e293b !important; 
         line-height: 1.6;
       }
-      tr:last-child td { border-bottom: none; }
       
       .katex { font-size: 1.1em !important; direction: ltr !important; }
       .katex-display { margin: 1em 0 !important; text-align: center !important; page-break-inside: avoid; }
