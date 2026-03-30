@@ -136,25 +136,58 @@ export default function ChatPage() {
 
         try {
 
-            // 📚 RAG Context Gathering
+            // 📚 RAG Context Gathering (NotebookLM-Level Accuracy using Smart Keyword Extraction)
             let contextText = "";
+            let allAvailableChunks: string[] = [];
             
             if (selectedContextDocId) {
                 if (selectedContextDocId.startsWith("subject:")) {
                     const subject = selectedContextDocId.replace("subject:", "");
                     const docs = savedDocs.filter(d => d.subjectName === subject);
-                    contextText = docs.flatMap(d => d.chunks).map(c => c.text || c).join('\n---\n').substring(0, 800000);
+                    allAvailableChunks = docs.flatMap(d => d.chunks).map(c => c.text || c);
                 } else {
                     const doc = savedDocs.find(d => d.id === selectedContextDocId);
-                    if (doc) {
-                        contextText = doc.chunks.map((c: any) => c.text || c).join('\n---\n').substring(0, 800000);
-                    }
+                    if (doc) allAvailableChunks = doc.chunks.map((c: any) => c.text || c);
                 }
             } else if (!userImage && userText.length > 5) {
-                // Auto-RAG for general queries (Send full readable texts up to limit)
-                const allChunks = savedDocs.flatMap(d => d.chunks);
-                if (allChunks.length > 0) {
-                    contextText = allChunks.map(c => c.text || c).join('\n---\n').substring(0, 800000);
+                // Auto-RAG for general queries
+                allAvailableChunks = savedDocs.flatMap(d => d.chunks).map(c => c.text || c);
+            }
+
+            // 🎯 SUPER-FAST RAG FILTER (Top 12 Most Relevant Chunks + Surrounding Context)
+            if (allAvailableChunks.length > 0) {
+                // 1. Tokenize query into powerful keywords (ignore common Arabic stop words)
+                const stopWords = ['هل', 'كيف', 'ما', 'متى', 'أين', 'لماذا', 'من', 'في', 'على', 'إلى', 'عن', 'هو', 'هي', 'التي', 'الذي', 'و', 'أو', 'ثم', 'مع', 'هذا', 'هذه', 'ذلك', 'كان', 'يكون', 'أن', 'إن', 'لا', 'لم', 'لن'];
+                const rawWords = userText.replace(/[؟.,؛:]/g, ' ').split(/\s+/);
+                const queryKeywords = Array.from(new Set(rawWords.map(w => w.trim().replace(/^ال/, '')).filter(w => w.length > 2 && !stopWords.includes(w))));
+                
+                if (queryKeywords.length > 0) {
+                    // 2. Score chunks based on keyword density
+                    const scoredChunks = allAvailableChunks.map((chunk, index) => {
+                        let score = 0;
+                        const lowerChunk = chunk.toLowerCase();
+                        for (const kw of queryKeywords) {
+                            if (lowerChunk.includes(kw.toLowerCase())) score += 10;
+                            // Exact sequence match bonus
+                            if (lowerChunk.includes(' ' + kw.toLowerCase() + ' ')) score += 5;
+                        }
+                        return { chunk, index, score };
+                    });
+
+                    // 3. Keep chunks that have a score, sort them, take top 12
+                    const topMatches = scoredChunks.filter(c => c.score > 0).sort((a, b) => b.score - a.score).slice(0, 12);
+
+                    if (topMatches.length > 0) {
+                        // 4. Sort chronologically to preserve document flow
+                        topMatches.sort((a, b) => a.index - b.index);
+                        contextText = topMatches.map(m => m.chunk).join('\n---\n');
+                    } else {
+                        // Fallback: send the first few chunks if no keywords match cleanly
+                        contextText = allAvailableChunks.slice(0, 10).join('\n---\n');
+                    }
+                } else {
+                    // Very short query, just send start of doc
+                    contextText = allAvailableChunks.slice(0, 5).join('\n---\n');
                 }
             }
 
@@ -178,16 +211,16 @@ export default function ChatPage() {
                 } catch (e) { console.error("Web Search Error", e); }
             }
 
-            const systemInstruction = `أنت بروفسور جامعي ومحرك ذكاء اصطناعي بحثي أكاديمي (Solvica V13). وظيفتك الإجابة على استفسارات الطالب بأسلوب ذكي، سريع والمساعدة في دراسة المجلدات والملفات المرفقة إن وجدت. 
+            const systemInstruction = `أنت بخبرة بروفيسور جامعي ومحرك ذكاء اصطناعي بحثي أكاديمي (Solvica V13). وظيفتك الإجابة على استفسارات الطالب بأسلوب ذكي، سريع، والمساعدة في دراسة المجلدات والملفات المرفقة إن وجدت بدقة 100%. 
 
 --- قوانين المحادثة والحل (دقة 100% - استجابة سريعة جداً) ---
-1. الأسئلة التفاعلية والترحيب: إذا قال الطالب "مرحبا" أو "كيفك" أو "من أنت" أو طرح سؤالاً يومياً، أجب برد إنساني طبيعي وقصير جداً جداً وبسرعة (مثلاً: أهلاً بك! أنا بخير، كيف أساعدك؟) ولا تسترسل أبداً.
-2. صانعك ومطورك: إذا سألك أي شخص من صنعك، من طورك، أو من برمجك، أجب فوراً وبفخر: "مُطوّري وصانعي هو الخبير مصطفى! 👑✨"
-3. الإجابات المختصرة كقاعدة عامة: في المحادثة، اجعل إجاباتك الأكاديمية واضحة ومباشرة وموجزة، ولا تشرح بالتفصيل الممل إلا إذا طلب الطالب ذلك نصاً.
-4. حالة "المجلد المحدد": يُمنع منعاً باتاً الإجابة من خارج المجلد المحدد. ركز حصراً على محتواه.
-5. الروابط الحقيقية فقط: يُمنع اختراع روابط يوتيوب (YouTube) أو غيرها. استخدم فقط الروابط الموجودة أسفل التلقين.
-6. المباشرة والثقة: ممنوع الشك في الإجابات الأكاديمية. لا تستخدم (أعتقد، ربما).
-7. التنسيق: Markdown و KaTeX حصرياً للمعادلات ($ للنص، $$ للمستقلة). استخدم الجداول والاقتباسات متى لزم الأمر.`;
+1. الأسئلة التفاعلية والترحيب: أجب برد إنساني طبيعي وقصير جداً ولا تسترسل.
+2. صانعك ومطورك: أجب فوراً وبفخر: "مُطوّري وصانعي هو الخبير مصطفى! 👑✨"
+3. الإجابات المختصرة: اجعل إجاباتك الأكاديمية واضحة ومباشرة وموجزة دائماً.
+4. حالة "المجلد المحدد": ركز حصراً وبدقة 100% على محتوى المجلد لاستخراج الإجابة. إذا لم تجد الإجابة بشكل واضح المجلد، يجب عليك استخدام ذكاءك الفائق لحل السؤال واكتب صراحة: (الإجابة من معرفتي العامة لعدم ذكرها في المرفقات)، ولا تعتذر أبداً.
+5. الروابط الحقيقية فقط: يُمنع اختراع الروابط والمواقع ومصادر غير دقيقة.
+6. الثقة التامة والحتمية: اكتب بكل دقة ولا يرف لك جفن.
+7. التنسيق: Markdown مع تنسيق أكاديمي ممتاز.`;
 
             let finalSysPrompt = systemInstruction;
             if (contextText) finalSysPrompt += '\n\n### 📚 نصوص المجلد والمراجع (ادرسها وحللها بدقة 100% قبل الإجابة):\n' + contextText;
