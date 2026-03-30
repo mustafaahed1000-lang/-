@@ -28,9 +28,9 @@ const BAZINGA_SYSTEM_PROMPT = `أنت Solvica — مساعد أكاديمي فا
 - عقليتك: أكاديمي صارم + محقق معلومات بدقة 100%
 
 ## قواعد البحث والتحقق (صارمة جداً)
-1. **ابحث في المصادر المتاحة أولاً** قبل أي إجابة تتعلق بمعلومة قابلة للتحقق
-2. **لكل معلومة اذكر:** المصدر + تاريخ النشر بالصيغة: ← المصدر: [اسم الموقع] | التاريخ: [تاريخ النشر]
-3. **إذا لم تجد مصدراً موثوقاً** → قل "لا أعلم بشكل مؤكد" ولا تخترع أبداً
+1. **أجب حصرياً من المستندات المرفقة** إذا كان السؤال يخص مواد دراسية.
+2. **لكل معلومة من المستندات اذكر:** المصدر ورقم الصفحة بالصيغة: ← المصدر: [اسم الملف] | الصفحة: [رقم الصفحة]. وإياك أن تخترع مواقع أو تواريخ (مثل "مجال برمجة" أو غيره) إذا كانت المعلومة من الملزمة!
+3. **إذا لم تجد الإجابة في المستند**، استخدم معرفتك العامة مع الإشارة لذلك مستخدماً عبارة "حسب معلوماتي العامة".
 4. **لا تخلط** بين الأحداث التاريخية والأخبار الحالية
 5. **للأرقام المالية والأسعار**: اذكر التوقيت الدقيق للسعر دائماً
 6. **إذا وجدت تعارضاً بين مصدرين** → اذكر الاثنين وبيّن التعارض
@@ -291,6 +291,20 @@ class AIClient {
         const hasImage = messages.some(m => !!m.image);
         let targetModel = "llama-3.3-70b-versatile";
         let finalMessages = openAiMessages;
+
+        // CRITICAL BUG FIX (GROQ 413 Payload Too Large):
+        // Groq Context is 8K tokens (roughly 30,000 characters). Deep RAG from books can be 800,000 chars!
+        // We must aggressively truncate the final message to prevent crashing
+        const maxChars = 20000;
+        finalMessages = finalMessages.map((m: any) => {
+            if (Array.isArray(m.content)) {
+                return m; // Images handled below
+            }
+            if (typeof m.content === 'string' && m.content.length > maxChars) {
+                return { ...m, content: m.content.substring(0, maxChars) + "\n...[محتوى تم قصه لحجمه الكبير]..." };
+            }
+            return m;
+        });
 
         if (hasImage) {
             targetModel = "llama-3.2-90b-vision-preview";
@@ -631,21 +645,21 @@ class AIClient {
             // Rotate all 9 Gemini keys
             ...GEMINI_KEYS.map((key, i) => ({
                 name: `Gemini 2.5 Flash (Key ${i + 1})`,
-                fn: () => this.callGemini(messages, sysPrompt, new GoogleGenerativeAI(key))
+                fn: () => {
+                    if (EXHAUSTED_KEYS.has(key)) throw new Error("KEY_EXHAUSTED");
+                    return this.callGemini(messages, sysPrompt, new GoogleGenerativeAI(key)).catch(e => {
+                        const errMsg = String(e?.message || e?.status || '').toLowerCase();
+                        if (errMsg.includes('429') || errMsg.includes('403') || errMsg.includes('quota') || errMsg.includes('api_key')) {
+                            EXHAUSTED_KEYS.add(key); // Mark dead/rate-limited keys instantly
+                        }
+                        throw e;
+                    });
+                }
             })),
-            { name: "Cerebras Llama 3.3 70B", fn: () => this.callCerebras(messages, sysPrompt) },
+            { name: "Pollinations Public", fn: () => this.callPollinationsText(messages, sysPrompt) },
             { name: "Groq (Llama 3.3 70B / Vision 90B)", fn: () => this.callGroq(messages, sysPrompt) },
             { name: "Cloudflare AI (Token 1)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_1) },
-            { name: "Cloudflare AI (Token 2)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_2) },
-            { name: "Pollinations Public", fn: () => this.callPollinationsText(messages, sysPrompt) },
-            { name: "TextSynth Mistral", fn: () => this.callTextSynth(messages, sysPrompt) },
-            { name: "Pawan API", fn: () => this.callPawan(messages, sysPrompt) },
-            { name: "HF Space Mistral API", fn: () => this.callDDG(messages, sysPrompt) },
-            { name: "GPT-Research API", fn: () => this.callGPTResearch(messages, sysPrompt) },
-            { name: "G4F Pollinations", fn: () => this.callG4FPollinations(messages, sysPrompt) },
-            { name: "G4F Hook", fn: () => this.callG4FHook(messages, sysPrompt) },
-            { name: "AI Horde", fn: () => this.callAIHorde(messages, sysPrompt) },
-            { name: "Massive Generic APIs", fn: () => this.callGenericFallbacks(messages, sysPrompt) }
+            { name: "Cloudflare AI (Token 2)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_2) }
         ];
 
         // If there's an image, ONLY allow vision-capable models (Puter, Gemini, Pollinations, Groq Vision)
@@ -807,17 +821,9 @@ class AIClient {
 
         // ─── LAYER 5+: Non-Stream Fallbacks (Text Only mostly) ───
         const fallbacks: { name: string; fn: () => Promise<string> }[] = [
-            { name: "Cloudflare (T1)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_1) },
-            { name: "Cloudflare (T2)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_2) },
             { name: "Pollinations Public", fn: () => this.callPollinationsText(messages, sysPrompt) },
-            { name: "TextSynth Mistral", fn: () => this.callTextSynth(messages, sysPrompt) },
-            { name: "Pawan API", fn: () => this.callPawan(messages, sysPrompt) },
-            { name: "HF Space Mistral API", fn: () => this.callDDG(messages, sysPrompt) },
-            { name: "GPT-Research API", fn: () => this.callGPTResearch(messages, sysPrompt) },
-            { name: "G4F Pollinations", fn: () => this.callG4FPollinations(messages, sysPrompt) },
-            { name: "G4F Hook", fn: () => this.callG4FHook(messages, sysPrompt) },
-            { name: "AI Horde", fn: () => this.callAIHorde(messages, sysPrompt) },
-            { name: "Massive Generic APIs", fn: () => this.callGenericFallbacks(messages, sysPrompt) }
+            { name: "Cloudflare (T1)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_1) },
+            { name: "Cloudflare (T2)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_2) }
         ];
 
         for (const fb of fallbacks) {
