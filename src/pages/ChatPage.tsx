@@ -154,40 +154,38 @@ export default function ChatPage() {
                 allAvailableChunks = savedDocs.flatMap(d => d.chunks).map(c => c.text || c);
             }
 
-            // 🎯 SUPER-FAST RAG FILTER (Top 12 Most Relevant Chunks + Surrounding Context)
+            // 🎯 DIRECT FULL-TEXT INJECTION (No more missing pieces!)
             if (allAvailableChunks.length > 0) {
-                // 1. Tokenize query into powerful keywords (ignore common Arabic stop words)
-                const stopWords = ['هل', 'كيف', 'ما', 'متى', 'أين', 'لماذا', 'من', 'في', 'على', 'إلى', 'عن', 'هو', 'هي', 'التي', 'الذي', 'و', 'أو', 'ثم', 'مع', 'هذا', 'هذه', 'ذلك', 'كان', 'يكون', 'أن', 'إن', 'لا', 'لم', 'لن'];
-                const rawWords = userText.replace(/[؟.,؛:]/g, ' ').split(/\s+/);
-                const queryKeywords = Array.from(new Set(rawWords.map(w => w.trim().replace(/^ال/, '')).filter(w => w.length > 2 && !stopWords.includes(w))));
-                
-                if (queryKeywords.length > 0) {
-                    // 2. Score chunks based on keyword density
-                    const scoredChunks = allAvailableChunks.map((chunk, index) => {
-                        let score = 0;
-                        const lowerChunk = chunk.toLowerCase();
-                        for (const kw of queryKeywords) {
-                            if (lowerChunk.includes(kw.toLowerCase())) score += 10;
-                            // Exact sequence match bonus
-                            if (lowerChunk.includes(' ' + kw.toLowerCase() + ' ')) score += 5;
-                        }
-                        return { chunk, index, score };
-                    });
-
-                    // 3. Keep chunks that have a score, sort them, take top 12
-                    const topMatches = scoredChunks.filter(c => c.score > 0).sort((a, b) => b.score - a.score).slice(0, 12);
-
-                    if (topMatches.length > 0) {
-                        // 4. Sort chronologically to preserve document flow
-                        topMatches.sort((a, b) => a.index - b.index);
-                        contextText = topMatches.map(m => m.chunk).join('\n---\n');
-                    } else {
-                        // Fallback: send the first few chunks if no keywords match cleanly
-                        contextText = allAvailableChunks.slice(0, 10).join('\n---\n');
-                    }
+                // If a specific folder/doc is selected, send a MASSIVE context window (up to 350,000 chars)
+                // This ensures the AI never misses any detail or multiple-choice option again.
+                if (selectedContextDocId) {
+                    contextText = allAvailableChunks.join('\n---\n').substring(0, 350000);
                 } else {
-                    // Very short query, just send start of doc
-                    contextText = allAvailableChunks.slice(0, 5).join('\n---\n');
+                    // If no doc is selected, we still do keyword search to not overwhelm context
+                    const stopWords = ['هل', 'كيف', 'ما', 'متى', 'أين', 'لماذا', 'من', 'في', 'على', 'إلى', 'عن', 'هو', 'هي', 'التي', 'الذي', 'و', 'أو', 'ثم', 'مع', 'هذا', 'هذه', 'ذلك', 'كان', 'يكون', 'أن', 'إن', 'لا', 'لم', 'لن'];
+                    const rawWords = userText.replace(/[؟.,؛:]/g, ' ').split(/\s+/);
+                    const queryKeywords = Array.from(new Set(rawWords.map(w => w.trim().replace(/^ال/, '')).filter(w => w.length > 2 && !stopWords.includes(w))));
+                    
+                    if (queryKeywords.length > 0) {
+                        const scoredChunks = allAvailableChunks.map((chunk, index) => {
+                            let score = 0;
+                            const lowerChunk = chunk.toLowerCase();
+                            for (const kw of queryKeywords) {
+                                if (lowerChunk.includes(kw.toLowerCase())) score += 10;
+                            }
+                            return { chunk, index, score };
+                        });
+
+                        const topMatches = scoredChunks.filter(c => c.score > 0).sort((a, b) => b.score - a.score).slice(0, 50); // Increased from 12 to 50
+                        if (topMatches.length > 0) {
+                            topMatches.sort((a, b) => a.index - b.index);
+                            contextText = topMatches.map(m => m.chunk).join('\n---\n').substring(0, 150000);
+                        } else {
+                            contextText = allAvailableChunks.slice(0, 20).join('\n---\n');
+                        }
+                    } else {
+                        contextText = allAvailableChunks.slice(0, 20).join('\n---\n');
+                    }
                 }
             }
 
@@ -195,6 +193,23 @@ export default function ChatPage() {
                 contextText = `[مستند إضافي مرفق: ${currentAttachedName}]\n${currentAttachedText}\n\n${contextText}`;
             }
 
+            // 1️⃣ Extract and Scrape URLs from User Message
+            let scrapedUrlContext = "";
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const urls = userText.match(urlRegex);
+            if (urls && urls.length > 0) {
+                try {
+                    // Grab the first URL provided and scrape it!
+                    const targetUrl = urls[0];
+                    const scrapeRes = await fetch(`https://r.jina.ai/${targetUrl}`);
+                    if (scrapeRes.ok) {
+                        const content = await scrapeRes.text();
+                        scrapedUrlContext = `\n[قام المستخدم بتزويدك بهذا الرابط: ${targetUrl}]\n[محتوى الرابط المقروء الآن]:\n${content.substring(0, 15000)}\n`;
+                    }
+                } catch (e) { console.error("URL Scrape Error", e); }
+            }
+
+            // 2️⃣ Web Search Capability
             let webSearchContext = "";
             if (!selectedContextDocId && !userImage) {
                 try {
@@ -202,35 +217,52 @@ export default function ChatPage() {
                     const webRes = await fetch("https://api.tavily.com/search", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ api_key: TAVILY_API_KEY, query: userText.substring(0, 150), search_depth: "basic", max_results: 3 })
+                        body: JSON.stringify({ 
+                            api_key: TAVILY_API_KEY, 
+                            query: userText.substring(0, 200), 
+                            search_depth: "basic", 
+                            max_results: 5,
+                            include_answer: true 
+                        })
                     });
                     if (webRes.ok) {
                         const data = await webRes.json();
-                        webSearchContext = data.results.map((r: any) => `[موقع: ${r.title}] (${r.url})\n${r.content}`).join('\\n\\n');
+                        let searchResults = data.answer ? `[إجابة محرك البحث المختصرة]: ${data.answer}\n\n` : "";
+                        searchResults += data.results.map((r: any) => `🔗 [موقع: ${r.title}] (${r.url})\n📄 المقتطف: ${r.content}\n`).join('\n');
+                        webSearchContext = searchResults;
                     }
                 } catch (e) { console.error("Web Search Error", e); }
             }
 
-            const systemInstruction = `أنت بخبرة بروفيسور جامعي ومحرك ذكاء اصطناعي بحثي أكاديمي (Solvica V13). وظيفتك الإجابة على استفسارات الطالب بأسلوب ذكي، سريع، والمساعدة في دراسة المجلدات والملفات المرفقة إن وجدت بدقة 100%. 
-
---- قوانين المحادثة والحل (دقة 100% - استجابة سريعة جداً) ---
-1. الأسئلة التفاعلية والترحيب: أجب برد إنساني طبيعي وقصير جداً ولا تسترسل.
-2. صانعك ومطورك: أجب فوراً وبفخر: "مُطوّري وصانعي هو الخبير مصطفى! 👑✨"
-3. الإجابات المختصرة: اجعل إجاباتك الأكاديمية واضحة ومباشرة وموجزة دائماً.
-4. حالة "المجلد المحدد": ركز حصراً وبدقة 100% على محتوى المجلد لاستخراج الإجابة. إذا لم تجد الإجابة بشكل واضح المجلد، يجب عليك استخدام ذكاءك الفائق لحل السؤال واكتب صراحة: (الإجابة من معرفتي العامة لعدم ذكرها في المرفقات)، ولا تعتذر أبداً.
-5. الروابط الحقيقية فقط: يُمنع اختراع الروابط والمواقع ومصادر غير دقيقة.
-6. الثقة التامة والحتمية: اكتب بكل دقة ولا يرف لك جفن.
-7. التنسيق: Markdown مع تنسيق أكاديمي ممتاز.`;
+            const systemInstruction = `أنت المساعد الأكاديمي الذكي (Solvica V13)، تمتلك كمبيوتراً ومتصلاً بالإنترنت.
+--- قوانين المحادثة الصارمة (الالتزام 100%) ---
+1. التمييز الذكي لنوع السؤال والسرعة:
+   - 💬 الأسئلة العادية أو الترحيبية (مثل كيفك، مرحبا): أجب بشكل بشري، طبيعي، سريع جداً، وقصير بكلمات معدودة. لا تذكر أي تفاصيل عن المجلدات، ولا تذكر أي مصادر للأسئلة العادية إطلاقاً.
+   - 📚 الأسئلة الأكاديمية (صح/خطأ، شروحات): أجب عليها كبروفيسور.
+2. عند وجود "مجلد محدد" (نصوص مرفقة):
+   - يجب أن تجيب من نصوص المجلد وتذكر اسم الملف ورقم الصفحة إذا وجدتها.
+   - 🔴 تحذير هام: إذا سألك سؤالاً (مثل صح/خطأ أو استفسار) ولم تجده في نص المجلد، يُمنع منعاً باتاً أن تعتذر أو تقول "المجلد غير مرفق" أو "للتأكد أحتاج للوصول للمجلد"! بدلاً من ذلك، تصرّف فوراً وأجب من معرفتك العامة القوية واكتب في النهاية فقط: (رأيي من المعرفة العامة لعدم توافرها بالنص).
+3. عند عدم وجود مجلد (استخدام بحث الويب):
+   - أجب بناءً على "نتائج بحث الويب الحية المرفقة لك". أرفق روابط حقيقية وفعلية من النتائج فقط.
+   - إياك ثم إياك أن تخترع وتنسخ مصادر لملفات أو كتب (مثل Pdfs) إذا لم تكن موجودة في السياق!
+4. هويتك ومطورك (تفرقة مهمة جداً):
+   - إذا سألك "ما اسمك؟" أو "من أنت؟": أجب فقط "أنا المساعد الذكي Solvica V13".
+   - إذا سألك "من صنعك؟" أو "من برمجك؟" أو "مين عملك؟" أو "مين طورك؟": أجب فوراً وبفخر حصرياً بـ "مُطوّري وصانعي هو الخبير مصطفى! 👑✨".
+5. محظورات مطلقة: لا تكرر أبداً الجملة الترحيبية "أهلاً بك! أنا Solvica...". لا تعتذر، لا تفترض، كن حاسماً 100%.`;
 
             let finalSysPrompt = systemInstruction;
-            if (contextText) finalSysPrompt += '\n\n### 📚 نصوص المجلد والمراجع (ادرسها وحللها بدقة 100% قبل الإجابة):\n' + contextText;
-            if (webSearchContext) finalSysPrompt += '\n\n### 🌍 نتائج بحث الويب الحية (استخرج منها الروابط والمعلومات الأكيدة ولا تخترع روابط غير موجودة هنا):\n' + webSearchContext;
+            if (contextText) finalSysPrompt += '\n\n### 📚 نصوص المجلد المرفق (اقرأها وإذا لم تجد الإجابة، أجب فوراً من خوارزمياتك ولا تعتذر أبداً):\n' + contextText;
+            if (scrapedUrlContext) finalSysPrompt += '\n\n### 🔗 محتوى الرابط الذي طلبه المستخدم (اقرأه بتمعن وأجب بناءً عليه بدقة):\n' + scrapedUrlContext;
+            if (webSearchContext) finalSysPrompt += '\n\n### 🌍 نتائج بحث الويب الحية (أرفق روابط حقيقية من هنا فقط ولا تخترع أبداً):\n' + webSearchContext;
 
-            const chatHistory: AIChatMessage[] = newMessages.map(m => ({
-                role: (m.role === 'user' ? 'user' : 'model') as Exclude<AIChatMessage['role'], 'assistant' | 'system'>,
-                content: m.content,
-                image: m.image
-            }));
+            // 🚫 Remove the hardcoded greeting from being sent to the AI!
+            const chatHistory: AIChatMessage[] = newMessages
+                .filter(m => !m.content.includes("أنا Solvica المساعد الأكاديمي"))
+                .map(m => ({
+                    role: (m.role === 'user' ? 'user' : 'model') as Exclude<AIChatMessage['role'], 'assistant' | 'system'>,
+                    content: m.content,
+                    image: m.image
+                }));
 
             let finalAIText = "";
             await aiClient.streamChat([

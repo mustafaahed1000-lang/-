@@ -99,15 +99,12 @@ export class MemoryVectorStore {
 
         this.chunks.push(...newChunks);
         this.rebuildIdf();
-        console.log(`⚡ Instantly indexed ${newChunks.length} chunks (no API calls)`);
     }
 
     /** Removes all chunks for a document */
     deleteDocumentChunks(documentId: string): void {
-        const before = this.chunks.length;
         this.chunks = this.chunks.filter(c => c.documentId !== documentId);
         this.rebuildIdf();
-        console.log(`Deleted ${before - this.chunks.length} chunks`);
     }
 
     /** Returns all chunks for a document (for summaries) */

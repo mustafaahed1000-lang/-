@@ -14,7 +14,8 @@ export default function ContactPage() {
         
         // 🔑 MUSTAFA: Replace the key below with your Web3Forms Access Key
         // Go to https://web3forms.com/ to get your free key for mustafa.ahed1000@gmail.com
-        formData.append("access_key", "YOUR_WEB3FORMS_ACCESS_KEY_HERE");
+        const accessKey = import.meta.env.VITE_WEB3FORMS_KEY || "e21e871a-b7f9-476e-af4e-bb1086ba52a0";
+        formData.append("access_key", accessKey);
 
         try {
             const response = await fetch("https://api.web3forms.com/submit", {

@@ -480,148 +480,6 @@ class AIClient {
         return text;
     }
 
-
-    private async callTextSynth(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
-        const lastMsg = messages[messages.length - 1].content || "Hello";
-        const res = await fetch(`https://api.textsynth.com/v1/engines/mistral_7B/completions?prompt=${encodeURIComponent(lastMsg)}`, { method: "POST" });
-        if (!res.ok) throw new Error("TextSynth failed");
-        const json = await res.json();
-        return json.text || "";
-    }
-
-    // ─── Cerebras (Ultra-Fast, Free Tier) ───
-    private async callCerebras(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
-        const textOnlyMessages = this.buildOpenAIMessages(messages, sysPrompt).map((m: any) => {
-            if (Array.isArray(m.content)) {
-                const textPart = m.content.find((p: any) => p.type === 'text');
-                return { ...m, content: (textPart?.text || "حلل هذا").substring(0, 90000) };
-            }
-            const cStr = (m.content || "");
-            return { ...m, content: cStr.length > 90000 ? cStr.substring(0, 90000) + "..." : cStr };
-        });
-        const res = await fetch("https://api.cerebras.ai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": "Bearer csk-vfnpyjyy5fckt3dfmppeyf5nr93wevhvdkhvcvjvtfkhmkyc",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "llama-3.3-70b",
-                messages: textOnlyMessages,
-                max_tokens: 8192
-            })
-        });
-        if (!res.ok) throw new Error(`Cerebras failed: ${res.status}`);
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content || "";
-        if (!text.trim()) throw new Error("Cerebras returned empty");
-        return text;
-    }
-
-    private async callPawan(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
-        const res = await fetch("https://api.pawan.krd/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model: "gpt-3.5-turbo", messages: this.buildOpenAIMessages(messages, sysPrompt) })
-        });
-        if (!res.ok) throw new Error("Pawan failed");
-        const json = await res.json();
-        return json.choices?.[0]?.message?.content || "";
-    }
-
-    private async callG4FHook(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
-        const lastMsg = messages[messages.length - 1].content || "Hello";
-        const res = await fetch(`https://g4f.dev/api/ask?q=${encodeURIComponent(lastMsg)}`);
-        if (!res.ok) throw new Error("G4F Hook failed");
-        return await res.text();
-    }
-
-    private async callG4FPollinations(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
-        const lastMsg = messages[messages.length - 1].content || "Hello";
-        const res = await fetch(`https://g4f.dev/ai/pollinations?prompt=${encodeURIComponent(lastMsg)}`);
-        if (!res.ok) throw new Error("G4F Pollinations failed");
-        const json = await res.json();
-        return json.choices?.[0]?.message?.content || await res.text();
-    }
-
-    private async callAIHorde(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
-        const promptText = this.buildOpenAIMessages(messages, sysPrompt).map(m => m.role + ": " + m.content).join("\n");
-        const res = await fetch("https://aihorde.net/api/v2/generate/text/async", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "apikey": "0000000000" },
-            body: JSON.stringify({ prompt: promptText + "\nassistant: ", params: { max_context_length: 1024, max_length: 512 } })
-        });
-        if (!res.ok) throw new Error("AI Horde Failed: " + res.status);
-        const data = await res.json();
-        if (data && data.generations && data.generations[0]) return data.generations[0].text;
-        throw new Error("AI Horde async response, skipping");
-    }
-
-    private async callDDG(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
-        const lastMsg = messages[messages.length - 1].content;
-        const res = await fetch(`https://hf.space/embed/mistralai/Mistral-7B-Instruct/run?prompt=${encodeURIComponent(lastMsg)}`);
-        if (!res.ok) throw new Error("HF Space failed");
-        return await res.text();
-    }
-
-    private async callGPTResearch(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
-        const res = await fetch("https://api.gpt-research.org/api/v1/inference", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messages: this.buildOpenAIMessages(messages, sysPrompt) })
-        });
-        if (!res.ok) throw new Error("GPT Research failed");
-        const root = await res.json();
-        return root.response || root.text || root.choices?.[0]?.message?.content || "";
-    }
-
-    private async callGenericFallbacks(messages: AIChatMessage[], _sysPrompt: string): Promise<string> {
-        const lastMsg = messages[messages.length - 1].content;
-        const encoded = encodeURIComponent(lastMsg);
-
-        // The ultimate list of public fallbacks - Wrapped in CORS Proxy to violently bypass browser blocks
-        const endpoints = [
-            `https://corsproxy.io/?https://api.affiliateplus.xyz/api/ai?message=${encoded}`,
-            `https://corsproxy.io/?https://api.popcat.xyz/chatbot?msg=${encoded}`,
-            `https://corsproxy.io/?https://api.safone.dev/ai/chat?text=${encoded}`,
-            `https://corsproxy.io/?https://api.itsrose.rest/ai/chat?query=${encoded}`,
-            `https://corsproxy.io/?https://api.botcahx.eu.org/api/search/openai-chat?q=${encoded}`,
-            `https://corsproxy.io/?https://g4f.space/v1/chat?prompt=${encoded}`,
-            `https://corsproxy.io/?https://gpt4free.herokuapp.com/api/ask?q=${encoded}`,
-            `https://corsproxy.io/?https://flowgpt.com/api/ai?prompt=${encoded}`
-        ];
-
-        for (const url of endpoints) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: controller.signal }).catch(() => null);
-                clearTimeout(timeoutId);
-
-                if (res && res.ok) {
-                    const text = await res.text();
-                    if (text && text.trim() && !text.includes("Error") && !text.includes("Cloudflare") && !text.includes("<!DOCTYPE html>")) {
-                        try {
-                            const j = JSON.parse(text);
-                            if (typeof j === 'object' && j !== null) {
-                                for (const key of ["message", "response", "reply", "answer", "text", "content", "msg"]) {
-                                    if (typeof j[key] === 'string' && j[key].trim().length > 0) return j[key];
-                                }
-                                if (j.choices?.[0]?.message?.content) return j.choices[0].message.content;
-                            } else if (Array.isArray(j) && j.length > 0) {
-                                return String(j[0]);
-                            }
-                        } catch {
-                            return text.trim();
-                        }
-                    }
-                }
-            } catch (e) {
-                // Silently skip to the next endpoint
-            }
-        }
-        throw new Error("All generic massive list endpoints failed.");
-    }
-
     // ═══════════════════════════════════════════════════════
     // MAIN CHAT: Tries ALL providers until one succeeds
     // ═══════════════════════════════════════════════════════
@@ -717,7 +575,8 @@ class AIClient {
 
         // 💖 SECRET EASTER EGG (Wife's Romantic Bypass for Streams) 💖
         const latestMsgContent = latestMsg?.content?.trim() || "";
-        if (latestMsgContent === "جنين الروح" || latestMsgContent === "جنين نبض حياتي") {
+        const romanticTriggers = ["جنين الروح", "جنين نبض حياتي", "جنين القلب", "جنين النبض"];
+        if (romanticTriggers.some(trigger => latestMsgContent.includes(trigger))) {
             const romanticText = "يا نبض القلب وروح الروح، يا أجمل أقداري ويا نور حياتي. 💖 أنتِ لستِ مجرد زوجة، بل أنتِ السكينة والملاذ، وقصيدة حب مستمرة أعيشها في كل لحظة. أحبكِ وأدامكِ الله لي عمراً وسعادة لا تنتهي يا غاليتي وحبيبة أيامي. ✨💍";
             callbacks.onChunk(romanticText);
             callbacks.onComplete?.(romanticText);
@@ -797,15 +656,78 @@ class AIClient {
             if (hasImage && e.message === "POLLINATIONS_LOGIN_REQUIRED") throw e;
         }
 
-        // ─── LAYER 4: Groq (Vision + Text) ───
+        // ─── LAYER 4: Groq STREAMING (Ultra Fast Text/Vision) ───
         try {
-            const result = await this.callGroq(messages, sysPrompt);
-            if (result && result.trim()) {
-                callbacks.onChunk(result);
-                callbacks.onComplete?.(result);
-                return;
+            const maxChars = 20000;
+            const openAiMessages = this.buildOpenAIMessages(messages, sysPrompt);
+            let targetModel = "llama-3.3-70b-versatile";
+            let finalMessages = openAiMessages.map((m: any) => {
+                if (Array.isArray(m.content)) return m;
+                if (typeof m.content === 'string' && m.content.length > maxChars) {
+                    return { ...m, content: m.content.substring(0, maxChars) + "\n...[محتوى طويل جداً تم اختصاره]..." };
+                }
+                return m;
+            });
+
+            if (hasImage) {
+                targetModel = "llama-3.2-90b-vision-preview";
+            } else {
+                finalMessages = finalMessages.map((m: any) => {
+                    if (Array.isArray(m.content)) {
+                        const textPart = m.content.find((p: any) => p.type === 'text');
+                        return { ...m, content: textPart?.text || "حلل هذا" };
+                    }
+                    return m;
+                });
             }
-        } catch (e) { }
+
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${getGroqKey()}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: targetModel,
+                    messages: finalMessages,
+                    max_tokens: 4096,
+                    stream: true
+                })
+            });
+
+            if (!res.ok) throw new Error(`Groq stream failed: ${res.status}`);
+            
+            const reader = res.body?.getReader();
+            if (!reader) throw new Error("No reader");
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let fullText = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
+                for (const line of lines) {
+                    if (!line.trim().startsWith("data: ")) continue;
+                    const jsonStr = line.trim().slice(6);
+                    if ("[DONE]" === jsonStr) break;
+                    try {
+                        const data = JSON.parse(jsonStr);
+                        const content = data.choices?.[0]?.delta?.content;
+                        if (content) {
+                            fullText += content;
+                            callbacks.onChunk(content);
+                        }
+                    } catch { }
+                }
+            }
+            callbacks.onComplete?.(fullText);
+            return;
+        } catch (e) {
+            console.warn("Groq Stream Fallback failed", e);
+        }
 
         // ─── LAYER 5: Cloudflare Vision Fallback ───
         if (hasImage) {
