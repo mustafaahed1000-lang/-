@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { checkQuota, consumeQuota } from '../lib/utils/dailyQuota';
 
 export default function GeneratorPage() {
     const [savedDocs, setSavedDocs] = useState<any[]>([]);
@@ -43,6 +44,11 @@ export default function GeneratorPage() {
             alert('يرجى اختيار المادة ليتم تحليلها وبناء المحتوى بناءً عليها.');
             return;
         }
+        const sq = checkQuota('summary');
+        if (!sq.ok) {
+            alert(sq.message);
+            return;
+        }
         setIsGenerating(true);
         setGeneratedContent(null);
 
@@ -73,6 +79,9 @@ ${contextStr}
             const response = await aiClient.chat([{ role: 'user', content: userQuery || 'اكتب التلخيص الأكاديمي الشامل الآن استناداً إلى نصوص المنهج المرفقة فقط، مع التجاهل التام لأي مقدمات أو وصف للملف نفسه.' }], undefined, sysPrompt);
             setGeneratedContent(response);
             setChatHistory([]);
+            if (response && String(response).trim().length > 0) {
+                consumeQuota('summary');
+            }
 
             // Save Activity
             const newActivity = {
@@ -97,6 +106,11 @@ ${contextStr}
 
     const sendChatMessage = async () => {
         if (!chatInput.trim() || isChatting || !loadedActivityId) return;
+        const cq = checkQuota('chat');
+        if (!cq.ok) {
+            alert(cq.message);
+            return;
+        }
         const msg = chatInput.trim();
         setChatInput('');
         setIsChatting(true);
@@ -109,6 +123,9 @@ ${contextStr}
 
             const finalHistory: AIChatMessage[] = [...newHistory, { role: 'assistant' as const, content: response }];
             setChatHistory(finalHistory);
+            if (response && String(response).trim().length > 0) {
+                consumeQuota('chat');
+            }
 
             const act = await db.getActivity(loadedActivityId);
             if (act) {

@@ -12,6 +12,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { exportToSimplePDF } from '../lib/utils/pdfExport';
+import { checkQuota, consumeQuota } from '../lib/utils/dailyQuota';
 
 export default function SolverPage() {
     const [savedDocs, setSavedDocs] = useState<any[]>([]);
@@ -79,6 +80,12 @@ export default function SolverPage() {
             return;
         }
 
+        const hwQ = checkQuota('homework');
+        if (!hwQ.ok) {
+            alert(hwQ.message);
+            return;
+        }
+
         setIsSolving(true);
         setSolution(null);
 
@@ -124,7 +131,7 @@ export default function SolverPage() {
 
             const contextStr = `=== المعلومات الأكاديمية والمراجع من مجلدك (التزم بها حرفياً 100%) ===\n${searchContext}\n\n === معلومات الويب إذا لم تجد الإجابة في المرجع ===\n${webSearchContext}`;
 
-            const systemPrompt = `أنت بروفسور جامعي ودكتور عبقري ومحرك ذكاء اصطناعي أكاديمي (Solvica V13). وظيفتك دراسة محتويات المجلد المرفق (كتب، ملخصات، امتحانات) وحل الأسئلة بدقة 100% وكأنك دكتور المادة، بسرعة فائقة وحسم مطلق.
+           const systemPrompt = `أنت بروفسور جامعي ودكتور عبقري ومحرك ذكاء اصطناعي أكاديمي (Solvica V13). وظيفتك دراسة محتويات المجلد المرفق (كتب، ملخصات، امتحانات) وحل الأسئلة بدقة 100% وكأنك دكتور المادة، بسرعة فائقة وحسم مطلق.
 
 ## 📖 مجلد المادة الذي درسته وحفظته في ذاكرتك الآن يحتوي على: "${docNames}"
 ${contextStr}
@@ -138,16 +145,17 @@ ${contextStr}
    - لباقي الأسئلة: أفِض في الشرح وقدم مقالاً أكاديمياً تفصيلياً يغطي كل الجوانب لكي يفهم الطالب تماماً.
 3. **الدقة الرياضية الفائقة (MathGPT Level)**: أنت تمتلك أقوى محرك استدلال منطقي ورياضي. في المسائل، قم بالتفكير بتمهل وتدقيق (CoT). اشرح كل خطوة رياضية بالتفصيل.
 4. **الثقة المطلقة للدكتور**: ممنوع إطلاقاً استخدام كلمات الشك والاحتمال (التي تبدو كاعتقاد أو ظن مثل "أتوقع، يمكن، ربما"). إجابتك يجب أن تكون يقينية وثابتة.
-5. **قراءة الصور والاختبارات بدقة مليون بالمئة**: اقرأ كل سطر ورمز بتمعن، ولا تخمن.
+5. **قراءة الصور والاختبارات بدقة مليون بالمئة**: اقرأ كل سطر ورمز بتمعن، ولا تخمن. **مهم جداً: إذا كانت الصورة أو النص غير واضح تماماً، إياك أن تعتذر أو تقول "الصورة غير واضحة كفاية" أو "لا يوجد نص"، ابذل أقصى جهدك البشري والآلي لمحاولة فك طلاسم النص أو الصورة وقدم إجابتك بكل ثقة ومباشرة بدون مقدمات اعتذار.**
 
 ### الهيكل الإلزامي للرد:
 **السؤال:** [أعد كتابة السؤال هنا]
 **الإجابة النهائية المبسطة:** [الجواب باختصار]
 **الشرح الأكاديمي التفصيلي:** [هنا تبدأ بالشرح المطول والمفصل جداً خطوة بخطوة لكي يستوعب الطالب]`;
 
-            const userContent = assignmentText.trim()
-                ? `اعطني الجواب النهائي الدقيق جداً. ${assignmentText}`
-                : `اقرأ الصورة واستخرج جميع الأسئلة وحلها بأقصى اختصار وإجابات نهائية دقيقة 100% بناءً على الكتاب المرفق.`;
+            const userContent = [
+                assignmentImage ? `اقرأ الصورة المرفقة واستخرج جميع الأسئلة وحلها بأقصى اختصار وإجابات نهائية دقيقة 100% بناءً على الكتاب المرفق.` : `اعطني الجواب النهائي الدقيق جداً.`,
+                assignmentText.trim() ? `نص إضافي مرفق/مستخرج من ملف الواجب: ${assignmentText}` : ``
+            ].filter(Boolean).join('\n\n');
 
             let messages: any[] = [
                 { role: 'system', content: systemPrompt },
@@ -161,6 +169,9 @@ ${contextStr}
             const response = await aiClient.chat(messages);
             setSolution(response);
             setChatHistory([]);
+            if (response && String(response).trim().length > 0) {
+                consumeQuota('homework');
+            }
 
             // Save to History
             const newActivity = {
@@ -185,6 +196,11 @@ ${contextStr}
 
     const sendChatMessage = async () => {
         if (!chatInput.trim() || isChatting || !loadedActivityId) return;
+        const cq = checkQuota('chat');
+        if (!cq.ok) {
+            alert(cq.message);
+            return;
+        }
         const msg = chatInput.trim();
         setChatInput('');
         setIsChatting(true);
@@ -198,6 +214,9 @@ ${contextStr}
 
             const finalHistory: AIChatMessage[] = [...newHistory, { role: 'assistant' as const, content: response }];
             setChatHistory(finalHistory);
+            if (response && String(response).trim().length > 0) {
+                consumeQuota('chat');
+            }
 
             const act = await db.getActivity(loadedActivityId);
             if (act) {

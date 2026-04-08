@@ -28,15 +28,15 @@ export async function extractTextFromFile(file: File): Promise<ExtractedPage[]> 
             const pdfDocument = await pdfjsLib.getDocument({
                 data: arrayBuffer,
                 isEvalSupported: false,
-                useWorkerFetch: false
+                useWorkerFetch: false,
+                verbosity: 0,
             }).promise;
 
             const pages: ExtractedPage[] = [];
             const numPages = pdfDocument.numPages;
 
-            // 🚀 PARALLEL 3X SPEEDUP: Process pages in parallel batches
-            // We use batches of 5 to avoid overloading the browser's memory/canvas limits
-            const batchSize = 5;
+            // 🚀 سرعة فائقة جداً: دفعات ضخمة
+            const batchSize = 40;
             for (let i = 1; i <= numPages; i += batchSize) {
                 const batchPromises = [];
                 for (let j = i; j < i + batchSize && j <= numPages; j++) {
@@ -46,15 +46,14 @@ export async function extractTextFromFile(file: File): Promise<ExtractedPage[]> 
                         let pageText = textContent.items.map((item: any) => item.str).join(' ');
 
                         // ─── Tesseract.js OCR Fallback has been removed for 100x speed ───
-                        // (The AI vision model will handle image-based PDFs when the user uploads them)
                         return { text: pageText, pageNum };
                     })(j));
                 }
                 const batchResults = await Promise.all(batchPromises);
                 pages.push(...batchResults);
 
-                // Yield to UI between batches
-                await new Promise(r => setTimeout(r, 10));
+                // Yield لايكاد يُذكر للواجهة للحفاظ على الانسيابية
+                await new Promise(r => setTimeout(r, 0));
             }
             return pages;
         } catch (error: any) {
@@ -81,7 +80,7 @@ export async function extractTextFromFile(file: File): Promise<ExtractedPage[]> 
  * Splits extracted pages into smaller, overlapping chunks suitable for embeddings.
  * Prepends precise citation metadata to every chunk.
  */
-export function chunkText(pages: ExtractedPage[], filename: string, chunkSize: number = 4000, overlap: number = 500): string[] {
+export function chunkText(pages: ExtractedPage[], _filename: string, chunkSize: number = 4000, overlap: number = 500): string[] {
     const chunks: string[] = [];
 
     for (const page of pages) {
@@ -104,8 +103,8 @@ export function chunkText(pages: ExtractedPage[], filename: string, chunkSize: n
                 }
             }
 
-            const prefix = `[المصدر: ${filename}]${page.pageNum ? ` [الصفحة: ${page.pageNum}]` : ''}\n`;
-            chunks.push(prefix + chunk.trim());
+            // We do NOT inject '[المصدر: ]' here anymore, because it confuses the LLM to output unwanted citations.
+            chunks.push(chunk.trim());
 
             // Prevent infinite loop edge case: if chunk was cut very short, standard overlap would stall progression.
             const safeOverlap = Math.min(overlap, Math.floor(chunk.length * 0.25));

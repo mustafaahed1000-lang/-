@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { checkQuota, consumeQuota } from '../lib/utils/dailyQuota';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface QuizQuestion {
@@ -236,6 +237,11 @@ export default function CourseChallenge() {
     // ── Generate exam ─────────────────────────────────────────────────────────
     const generateExam = async () => {
         if (!latestDoc) return;
+        const tq = checkQuota('selftest');
+        if (!tq.ok) {
+            alert(tq.message);
+            return;
+        }
         setIsGenerating(true);
         setExamMarkdown('');
         setQuestions([]);
@@ -248,29 +254,33 @@ export default function CourseChallenge() {
             const allChunks = [...latestDoc.chunks].map((c: any) => typeof c === 'string' ? c : (c.text || ''));
             const contextStr = allChunks.join('\n---\n').substring(0, 300000);
 
-            const sysPrompt = `أنت أستاذ جامعي ومصمم امتحانات معتمد. مهمتك إعداد ورقة اختبار أكاديمية معيارية صعبة من النص العلمي المرفق.
+            const sysPrompt = `أنت أستاذ جامعي ومصمم امتحانات معتمد. مهمتك إعداد ورقة اختبار أكاديمية معيارية دقيقة من النص المرفق.
 
-=== محتوى المستند المرفق حصرياً ===
-${contextStr}
-=== نهاية المحتوى ===
+🎯 شروط جودة الاختبار الإلزامية (30 سؤال بالظبط):
 
-🎯 شروط جودة الاختبار الإلزامية:
-1. **الاعتماد المطلق على النص المرفق فقط.** ممنوع اختراع معلومات غير مستندة على المحتوى.
-2. **هيكل الاختبار الإلزامي:**
-   - ## 📝 القسم الأول: اختيار من متعدد (15 سؤالاً)
-     - لكل سؤال: رقم + نص + 4 خيارات (أ) ب) ج) د)) خادعة علمياً.
-     - ثم مباشرة: ✔ الإجابة: الحرف) ثم 📖 الشرح: جملة شرح.
-   - ## ✅ القسم الثاني: صح أم خطأ (15 سؤالاً)
-     - لكل سؤال: رقم + نص العبارة.
-     - ثم مباشرة: ✔ الإجابة: صح/خطأ ثم 📖 الشرح: جملة شرح.
-3. **معايير الصعوبة:**
-   - ❌ ممنوع الأسئلة التافهة.
-   - ✅ تقيس الفهم العميق: مقارنة مفهومين، تطبيق قانون، تحديد استثناء.
-4. **اللغة:** عربية فصحى أكاديمية رسمية. ابدأ مباشرة بعنوان الامتحان.`;
+## 📝 القسم الأول: اختيار من متعدد (15 سؤالاً)
+يجب وضع 15 سؤال اختيار من متعدد تقيس الفهم العميق.
+النمط المطلوب لكل سؤال في هذا القسم:
+1. السؤال هنا؟
+أ) خيار أول
+ب) خيار ثاني
+ج) خيار ثالث
+د) خيار رابع
+✔ الإجابة: الحرف
+📖 الشرح: جملة تشرح السبب.
+
+## ✅ القسم الثاني: صح أم خطأ (15 سؤالاً)
+يجب وضع 15 سؤال صح وخطأ.
+النمط المطلوب لكل سؤال في هذا القسم:
+16. العبارة هنا.
+✔ الإجابة: صح / خطأ
+📖 الشرح: جملة تشرح السبب.
+
+⚠️ تأكيد حاسم: إذا كان النص المرفق فارغاً أو غير مكتمل (بسبب كونه ملف صور أو Scanned PDF لم نتمكن من قراءته)، إياك أن تعتذر أو تقول لا يوجد نص! بل اعتمد استثنائياً على معرفتك الأكاديمية العميقة لإنشاء اختبار افتراضي، واكتب في بداية الاختبار الرسالة التالية قبل الأسئلة: "> ⚠️ **ملاحظة:** الملف المرفق يحتوي على صور أو نصوص عير قابلة للقراءة آلياً، لذا قمت بتوليد اختبار شامل من قاعدة بياناتي الأكاديمية للفائدة."`;
 
             let fullMd = '';
             await aiClient.streamChat(
-                [{ role: 'user', content: 'ابدأ بتوليد ورقة الاختبار الشاملة من 30 سؤالاً الآن.' }],
+                [{ role: 'user', content: `=== محتوى المستند المرفق حصرياً ===\n${contextStr}\n=== نهاية المحتوى ===\n\nابدأ بتوليد ورقة الاختبار الشاملة من 30 سؤالاً الآن.` }],
                 {
                     onChunk: (chunk: string) => {
                         fullMd += chunk;
@@ -291,6 +301,10 @@ ${contextStr}
 
             const xp = parseInt(localStorage.getItem('solvica_course_progress') || '0', 10);
             localStorage.setItem('solvica_course_progress', (xp + 50).toString());
+
+            if (fullMd.trim().length > 0) {
+                consumeQuota('selftest');
+            }
 
         } catch (error: any) {
             alert('حدث خطأ أثناء التوليد: ' + error.message);
@@ -319,6 +333,11 @@ ${contextStr}
     // ── AI Chat ─────────────────────────────────────────────────────────────
     const sendChat = async () => {
         if (!chatInput.trim() || isChatting) return;
+        const cq = checkQuota('chat');
+        if (!cq.ok) {
+            alert(cq.message);
+            return;
+        }
         const msg = chatInput.trim();
         setChatInput('');
         setIsChatting(true);
@@ -343,6 +362,9 @@ ${wrongQs || 'لا توجد أخطاء بعد.'}
             const reply = await aiClient.chat([sysContext, ...newHistory]);
             const finalHistory: AIChatMessage[] = [...newHistory, { role: 'assistant', content: reply }];
             setChatHistory(finalHistory);
+            if (reply && String(reply).trim().length > 0) {
+                consumeQuota('chat');
+            }
             setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         } catch { /* ignore */ }
         finally { setIsChatting(false); }

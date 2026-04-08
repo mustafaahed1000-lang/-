@@ -28,6 +28,9 @@ const AVATAR_PRESETS = [
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [name, setName] = useState('');
     const [avatar, setAvatar] = useState('');
+    const [pollinationsKey, setPollinationsKey] = useState('');
+    const [chatanywhereKey, setChatanywhereKey] = useState('');
+    const [cohereKey, setCohereKey] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -40,6 +43,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     setAvatar(u.picture || '');
                 } catch { }
             }
+            const pk = localStorage.getItem('solvica_pollinations_key');
+            if (pk) setPollinationsKey(pk);
+            
+            const ck = localStorage.getItem('solvica_chatanywhere_key');
+            if (ck) setChatanywhereKey(ck);
+
+            const cohK = localStorage.getItem('solvica_cohere_key');
+            if (cohK) setCohereKey(cohK);
         }
     }, [isOpen]);
 
@@ -66,6 +77,21 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         u.name = name || 'طالب ضيف';
         u.picture = avatar || AVATAR_PRESETS[0];
         localStorage.setItem('solvicaUser', JSON.stringify(u));
+        if (pollinationsKey) {
+            localStorage.setItem('solvica_pollinations_key', pollinationsKey.trim());
+        } else {
+            localStorage.removeItem('solvica_pollinations_key');
+        }
+        if (chatanywhereKey) {
+            localStorage.setItem('solvica_chatanywhere_key', chatanywhereKey.trim());
+        } else {
+            localStorage.removeItem('solvica_chatanywhere_key');
+        }
+        if (cohereKey) {
+            localStorage.setItem('solvica_cohere_key', cohereKey.trim());
+        } else {
+            localStorage.removeItem('solvica_cohere_key');
+        }
         window.location.reload();
     };
 
@@ -98,6 +124,65 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             className="w-full bg-[var(--bg-dashboard)] border border-[var(--border-color)] rounded-xl px-4 py-3 text-[var(--text-main)] focus:outline-none focus:border-[#2ba396] transition-colors"
                             placeholder="اسمك هنا..."
                         />
+                    </div>
+
+                    {/* Custom API Keys Section */}
+                    <div className="bg-[#2ba396]/5 border border-[#2ba396]/20 p-4 rounded-2xl space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="textlg">🚀</span>
+                            <h3 className="font-bold text-[#2ba396]">استهلاك مفتوح (مفاتيح الذكاء الاصطناعي)</h3>
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)] opacity-80 mb-3">
+                            أضف مفاتيحك الخاصة لتجاوز حدود الاستهلاك في الموقع والحصول على ذكاء غير محدود. يمكنك استخراجها مجاناً من الروابط أدناه.
+                        </p>
+                        
+                        {/* Pollinations Key */}
+                        <div className="space-y-2">
+                            <label className="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] mt-2">
+                                <span>مفتاح (Pollinations AI) - GPT-4o</span>
+                                <a href="https://pollinations.ai/" target="_blank" rel="noopener noreferrer" className="text-[#2ba396] hover:underline flex items-center gap-1">استخراج المفتاح <Upload className="w-3 h-3"/></a>
+                            </label>
+                            <input
+                                type="password"
+                                value={pollinationsKey}
+                                onChange={e => setPollinationsKey(e.target.value)}
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-main)] focus:outline-none focus:border-[#2ba396] transition-colors"
+                                placeholder="انسخ المفتاح هنا..."
+                            />
+                        </div>
+
+                        {/* ChatAnywhere Key */}
+                        <div className="space-y-2">
+                            <label className="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] mt-2">
+                                <span>مفتاح (ChatAnywhere) - GPT-4o Mini</span>
+                                <a href="https://api.chatanywhere.org/v1/oauth/free/github/render" target="_blank" rel="noopener noreferrer" className="text-[#2ba396] hover:underline flex items-center gap-1">استخراج المفتاح <Upload className="w-3 h-3"/></a>
+                            </label>
+                            <input
+                                type="password"
+                                value={chatanywhereKey}
+                                onChange={e => setChatanywhereKey(e.target.value)}
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-main)] focus:outline-none focus:border-[#2ba396] transition-colors"
+                                placeholder="انسخ المفتاح هنا (sk-...)"
+                            />
+                        </div>
+
+                        {/* Cohere Key */}
+                        <div className="space-y-2 border-t border-[#2ba396]/20 pt-4 mt-4">
+                            <label className="flex items-center justify-between text-xs font-bold text-[var(--text-muted)]">
+                                <span>مفتاح (Cohere) - Command R+ (أسطورة الجامعة)</span>
+                                <a href="https://dashboard.cohere.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-[#2ba396] hover:underline flex items-center gap-1">استخراج المفتاح <Upload className="w-3 h-3"/></a>
+                            </label>
+                            <p className="text-[10px] text-[var(--text-muted)] opacity-70 mb-1">
+                                هذا النموذج يعطيك 1000 سؤال مجاني شهرياً، وهو مصمم خصيصاً لتحليل ملايين الكلمات بدقة نوت بوك 100%. أثبت جدارته في الميزان الصرفي والرياضيات.
+                            </p>
+                            <input
+                                type="password"
+                                value={cohereKey}
+                                onChange={e => setCohereKey(e.target.value)}
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-main)] focus:outline-none focus:border-[#2ba396] transition-colors"
+                                placeholder="انسخ مفتاح Cohere هنا..."
+                            />
+                        </div>
                     </div>
 
                     {/* Profile Picture Upload */}

@@ -12,7 +12,8 @@ export async function renderPdfPageToBase64(file: Blob | File, pageNumber: numbe
     const pdfDocument = await pdfjsLib.getDocument({
         data: arrayBuffer,
         isEvalSupported: false,
-        useWorkerFetch: false
+        useWorkerFetch: false,
+        verbosity: 0,
     }).promise;
 
     if (pageNumber < 1 || pageNumber > pdfDocument.numPages) {

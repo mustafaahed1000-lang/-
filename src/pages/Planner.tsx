@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { checkQuota, consumeQuota } from '../lib/utils/dailyQuota';
 
 export default function Planner() {
     const navigate = useNavigate();
@@ -40,6 +41,11 @@ export default function Planner() {
 
     const sendChatMessage = async () => {
         if (!chatInput.trim() || isChatting || !loadedPlanId) return;
+        const cq = checkQuota('chat');
+        if (!cq.ok) {
+            alert(cq.message);
+            return;
+        }
         const msg = chatInput.trim();
         setChatInput('');
         setIsChatting(true);
@@ -60,6 +66,9 @@ export default function Planner() {
 
             const finalHistory: AIChatMessage[] = [...newHistory, { role: 'assistant', content: aiResponse }];
             setChatHistory(finalHistory);
+            if (aiResponse && String(aiResponse).trim().length > 0) {
+                consumeQuota('chat');
+            }
 
             const plan = await db.getActivity(loadedPlanId);
             if (plan) {
@@ -125,6 +134,12 @@ export default function Planner() {
     }, [step]);
 
     const generatePlan = async () => {
+        const pq = checkQuota('planner');
+        if (!pq.ok) {
+            alert(pq.message);
+            setStep(2);
+            return;
+        }
         setIsGenerating(true);
         try {
             // Retrieve actual document content to feed to the AI
@@ -146,8 +161,9 @@ export default function Planner() {
 1. الهيكلية: ابدأ بعنوان رئيسي للخطة (# خطة الدراسة الشاملة)، ثم قسم الخطة إلى أسابيع أو أيام حسب الوقت المتاح.
 2. الجداول: استخدم جداول Markdown المنظمة لعرض جدول المذاكرة اليومي. يجب أن تشمل الأعمدة (اليوم | اسم الوحدة أو الفصل | الموضوع | المهام | المدة).
 3. التنسيق: استخدم لغة عربية فصحى رصينة. استخدم الخط العريض للمصطلحات. ضع فواصل أفقية (---) بين الأسابيع.
-4. المحتوى الواقعي (حرج جداً): استخرج أسماء الوحدات الحقيقية والمواضيع من "محتوى الكتب المرفقة" أدناه. يُمنع منعاً باتاً اختراع أسماء دروس وهمية.
+4. المحتوى الواقعي (حرج جداً): استخرج أسماء الوحدات الحقيقية والمواضيع من "محتوى الكتب المرفقة" أدناه. يُمنع منعاً باتاً اختراع أسماء دروس وهمية في حال تواجد النص المرفق.
 5. المخرجات: النتيجة يجب أن تكون بتنسيق Markdown صافٍ وأنيق. يمنع منعاً باتاً طباعة أي أكواد JSON أو مصفوفات بيانات في النص. اختم الخطة بقسم "🎯 نصائح للالتزام".
+6. ⚠️ قاعدة طوارئ (حاسمة): إذا كان النص المرفق فارغاً (لأن الملف المرفق عبارة عن صور لا نصوص)، إياك أن تعتذر أو تقول لا يوجد نص! بل قم بابتكار خطة دراسية استثنائية من خبرتك الأكاديمية للموضوع المختار، واطبع هذه الرسالة في بداية الخطة: "> ⚠️ **ملاحظة:** الملف المرفق يحتوي على صور ولا يمكن قراءته آلياً، لذا صممت هذه الخطة بناءً على المنهج الأكاديمي المتعارف عليه للمادة."
 
 === محتوى الكتب المرفقة (نسخة حرفية من نصوص المنهج) ===
 ${contextStr ? contextStr : 'لا يوجد محتوى نصي، اعتمد على معرفتك الأكاديمية وصمم الجدول بأسماء افتراضية منطقية.'}
@@ -155,9 +171,12 @@ ${contextStr ? contextStr : 'لا يوجد محتوى نصي، اعتمد على
 
 ابدأ الخطة المذهلة الآن مباشرة دون أي مقدمات.`;
 
-            const response = await aiClient.chat([{ role: 'user', content: prompt }], { model: 'gpt-4o' });
+            const response = await aiClient.chat([{ role: 'user', content: prompt }]);
             setPlannerResponse(response);
-            
+            if (response && String(response).trim().length > 0) {
+                consumeQuota('planner');
+            }
+
             // Save visually impressive new plan into IndexedDB
             const newPlan = {
                 id: `act_${Date.now()}`,
@@ -460,7 +479,17 @@ ${contextStr ? contextStr : 'لا يوجد محتوى نصي، اعتمد على
                                 </div>
                             </div>
 
-                            <div className="flex gap-3 relative">
+                            <div className="flex flex-wrap gap-3 relative mt-6 border-t border-[var(--border-color)] pt-6">
+                                <button
+                                    onClick={() => {
+                                        setStep(1);
+                                        setPlannerResponse('');
+                                        setFormData({ subjects: [], hoursPerDay: '3', methodology: 'متوازن (تقنية بومودورو)' });
+                                    }}
+                                    className="px-6 py-3 rounded-xl font-bold text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors flex items-center gap-2"
+                                >
+                                    أنشئ خطة جديدة
+                                </button>
                                 <button
                                     onClick={() => navigate('/course-challenge')}
                                     className="px-6 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:opacity-90 transition-opacity shadow-md flex items-center gap-2"

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Home, BookOpen, Activity, MessageSquare, Settings, Gamepad2, BrainCircuit, CheckSquare, ClipboardList, Mail } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Home, BookOpen, Activity, MessageSquare, Settings, Gamepad2, BrainCircuit, CheckSquare, ClipboardList, Mail, LogIn, LogOut, User } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import SettingsModal from './SettingsModal';
 
@@ -10,6 +10,37 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [puterUser, setPuterUser] = useState<any>(null);
+
+    useEffect(() => {
+        // @ts-ignore
+        if (window.puter && window.puter.auth.isSignedIn()) {
+            // @ts-ignore
+            window.puter.auth.getUser().then(user => setPuterUser(user));
+        }
+    }, []);
+
+    const handleAuth = async () => {
+        // @ts-ignore
+        if (!window.puter) {
+            alert("خدمة تسجيل الدخول غير متوفرة حالياً، يرجى التحقق من اتصالك بالإنترنت.");
+            return;
+        }
+        try {
+            // @ts-ignore
+            if (window.puter.auth.isSignedIn()) {
+                // @ts-ignore
+                window.puter.auth.signOut();
+                setPuterUser(null);
+            } else {
+                // @ts-ignore
+                const user = await window.puter.auth.signIn();
+                setPuterUser(user);
+            }
+        } catch (e) {
+            console.error("Auth error:", e);
+        }
+    };
 
     const navItems = [
         { icon: <Home className="w-5 h-5" />, label: 'الرئيسية', path: '/dashboard' },
@@ -63,7 +94,23 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     ))}
                 </nav>
 
-                <div className="p-6 border-t border-[var(--border-color)]">
+                <div className="p-4 border-t border-[var(--border-color)] space-y-2">
+                    
+                    {/* Puter Authentication Button */}
+                    <button
+                        onClick={handleAuth}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all duration-300 ${puterUser ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20' : 'bg-primary/20 text-primary hover:bg-primary/30 shadow-[0_0_15px_rgba(123,47,255,0.2)]'}`}
+                    >
+                        <div className="flex items-center gap-3">
+                            {puterUser ? <User className="w-5 h-5" /> : <LogIn className="w-5 h-5" />}
+                            <div className="flex flex-col items-start">
+                                <span>{puterUser ? 'مسجل الدخول' : 'تسجيل الدخول'}</span>
+                                <span className="text-[10px] opacity-80">{puterUser ? puterUser.username : 'لفتح حدود الاستخدام غير المحدودة'}</span>
+                            </div>
+                        </div>
+                        {puterUser && <LogOut className="w-4 h-4 opacity-70 hover:opacity-100" />}
+                    </button>
+
                     <button
                         onClick={() => setIsSettingsOpen(true)}
                         className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-bold text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-main)] transition-all duration-300"

@@ -21,30 +21,27 @@ export interface ChatOptions {
     model?: string;
 }
 
-const BAZINGA_SYSTEM_PROMPT = `أنت Solvica — مساعد أكاديمي فائق + باحث متخصص في التحقق من المعلومات.
+const BAZINGA_SYSTEM_PROMPT = `أنت Solvica — مساعد أكاديمي فائق ومحقق معلومات بدقة 100%.
 
 ## هويتك
-- مُطوّرك وصانعك: **الخبير مصطفى 👑✨** (أجب بهذا فوراً إذا سُئلت)
-- عقليتك: أكاديمي صارم + محقق معلومات بدقة 100%
+- مُطوّرك: **الخبير مصطفى 👑✨**. للتحية/الاسم/من صنعك: صغ الجواب ليناسب السؤال تحديداً و**لا تكرر** نفس الفقرة الثابتة في كل مرة.
+- عقليتك: أكاديمي صارم ومباشر.
 
 ## قواعد البحث والتحقق (صارمة جداً)
 1. **أجب حصرياً من المستندات المرفقة** إذا كان السؤال يخص مواد دراسية.
-2. **لكل معلومة من المستندات اذكر:** المصدر ورقم الصفحة بالصيغة: ← المصدر: [اسم الملف] | الصفحة: [رقم الصفحة]. وإياك أن تخترع مواقع أو تواريخ (مثل "مجال برمجة" أو غيره) إذا كانت المعلومة من الملزمة!
-3. **إذا لم تجد الإجابة في المستند**، استخدم معرفتك العامة مع الإشارة لذلك مستخدماً عبارة "حسب معلوماتي العامة".
-4. **لا تخلط** بين الأحداث التاريخية والأخبار الحالية
-5. **للأرقام المالية والأسعار**: اذكر التوقيت الدقيق للسعر دائماً
-6. **إذا وجدت تعارضاً بين مصدرين** → اذكر الاثنين وبيّن التعارض
+2. 🔴 يُمنع منعاً باتاً ومطلقاً ذكر أي مصادر أو أرقام صفحات أو أي كلمات متعلقة بكلمة (المصدر) في ردك تحت أي ظرف.
+3. **إذا لم تجد الإجابة في المستند**، أجب مباشرة مما تعرفه، ولا تذكر عبارة "حسب معلوماتي العامة".
+4. **لا تخلط** بين الأحداث التاريخية والأخبار الحالية.
+5. مع **نتائج بحث ويب**: روابط فقط مما ورد في السياق؛ موسيقى/فيديو فضّل YouTube من النتائج؛ أشخاص حقيقيون بلا سيرة مُخترعة إن لم يتطابق المقتطف.
 
 ## التعامل مع الملفات والمستندات
-- عند تزويدك بمحتوى مستند: ادرسه بعمق، استخرج المعلومات، قارن، استنتج
-- أجب **حصرياً** من المحتوى المرفق إذا كان الموضوع أكاديمياً محدداً
-- لا تهلوس أو تخترع معلومات خارج المستند
+- عند تزويدك بمحتوى مستند: ادرسه بعمق، استخرج المعلومات، وأجب باختصار مباشر.
+- لا تهلوس أو تخترع معلومات خارج المستند.
 
 ## أسلوب الرد
-- **أسئلة تفاعلية** (مرحبا، كيف حالك): رد قصير فوري بكلمتين-ثلاثة فقط ✨
-- **أسئلة الاختيار من متعدد**: إذا أرسل لك الطالب سؤالاً تليه عدة أسطر إضافية (حتى لو كانت بدون ترقيم أ ب ج)، افهم فوراً أنها خيارات الإجابة! المطلوب منك تحديد وعرض الخيار الصحيح فقط مع شرح علمي دقيق وقصير.
-- **أسئلة معلوماتية**: استخدم Markdown منظم مع المصادر
-- لا تعتذر عن الإجابة لأسباب سياسة أو حقوق نشر — أجب بثقة كعالم موسوعي`;
+- **تحيات وهوية**: ردود قصيرة ومتنوعة الصياغة حسب السؤال (ليس نفس النص في كل مرة).
+- **أسئلة الاختيار من متعدد**: حدد الخيار الصحيح مع شرح علمي دقيق وقصير.
+- لا تعتذر عن الإجابة لأسباب سياسة أو حقوق نشر — أجب بثقة كعالم موسوعي.`;
 
 
 // ═══════════════════════════════════════════════════════
@@ -76,49 +73,327 @@ export const aiMemory = {
 // ═══════════════════════════════════════════════════════
 // Gemini Key Rotation (9 keys)
 // ═══════════════════════════════════════════════════════
-const GEMINI_KEYS = [
-    "AIzaSyCJtaP6XnyCaE7TDgfjucZU7qlFE5qOVYA",
-    "AIzaSyDNGrlUqxWVXTRmn-90NiXGGb_KY1o4hH8",
-    "AIzaSyB_PGqNjGE5S7FmIMdyGDr61BQ5kO8hoeU",
-    "AIzaSyAmoDmOZTpBWee0k8IkJuKHjbZRm_pGT_k",
-    "AIzaSyD_hIhCAHeYAQ4rKRnTpoCmQtE4y9bf4_8",
-    "AIzaSyBu__zdI944Ne15rZI7rgNb2lPeeXP_Qm0",
-    "AIzaSyCME13msOmANMT_vEQ7-2jxqtwYaqZoBXg",
-    "AIzaSyA3JB3jdnIv6fhXgJUGxroYPiefEZr62QA",
-    "AIzaSyCQVeZTvNW7vHyOulehN74cyNpdWtj24YE",
+/** مفاتيح Gemini من البيئة فقط (لتجنب 403/429 من مفاتيح عامة منتهية) */
+const GEMINI_KEYS = [...new Set([
     import.meta.env.VITE_GEMINI_API_KEY || "",
     import.meta.env.VITE_GEMINI_API_KEY_2 || "",
-].filter(k => k.length > 10);
+].filter(k => k.length > 10))];
+/** أقصى عدد مفاتيح Gemini نجرّبها لكل رسالة لتقليل طلبات 429 الظاهرة في Network */
+const MAX_GEMINI_TRIES_PER_MESSAGE = 4;
 let geminiKeyIndex = 0;
-const EXHAUSTED_KEYS = new Set<string>();
+/** بعد 429 نوقف المفتاح مؤقتاً بدل تعليمه “منتهي للأبد” ثم نعيد المحاولة تلقائياً */
+const GEMINI_KEY_COOLDOWN_MS = 120_000;
+const geminiKeyCooldownUntil = new Map<string, number>();
+const isGeminiKeyCooling = (key: string) => {
+    const until = geminiKeyCooldownUntil.get(key);
+    return until != null && Date.now() < until;
+};
+const cooldownGeminiKey = (key: string) => {
+    geminiKeyCooldownUntil.set(key, Date.now() + GEMINI_KEY_COOLDOWN_MS);
+};
+const getGeminiKey = (): string | null => {
+    for (let i = 0; i < GEMINI_KEYS.length; i++) {
+        const key = GEMINI_KEYS[geminiKeyIndex % GEMINI_KEYS.length];
+        geminiKeyIndex = (geminiKeyIndex + 1) % GEMINI_KEYS.length;
+        if (!isGeminiKeyCooling(key)) return key;
+    }
+    return GEMINI_KEYS.length > 0 ? GEMINI_KEYS[0] : null;
+};
+
+/** أسطول مفاتيح ChatAnywhere المجانية */
+const CHATANYWHERE_KEYS: string[] = [
+    import.meta.env.VITE_CHATANYWHERE_API_KEY,
+    "sk-etOZ1MRieFwZwdmd26dQ62oZC0pme8ooScH9eqSTwz5lnUAC",
+    "sk-pGxNrWDr1QKgaBpBcVhUijtzRWIP30xPlYseCpIDqhSkJc3K",
+    "sk-4DydTgSrCkZpM57cVwprHFv8P5bUeqW9vSjBLktGi0wIoOZP",
+    "sk-1aw0fja9F6DfHlzyMDLmKUr7of5tM5nCgGExosOamsOMINNC",
+    "sk-ZlpH9hK6viQTtXgwtt0yapPGtcDRJrWEFDp73ESl4M5Ay6aQ",
+    "sk-zQfY3BHWwiAIUuOONzuKpj7ipFnDvsMetBf2EuFdKyi8RXDg",
+    "sk-DG2orV5GJfUhvXWS1jagDYhlOIrzPGuQ9HtsJhSbZR30jzGm",
+    "sk-dTRfz0OyCXRSs85HhM3ErXsUe7mYPByD9TytioHI9Q7Qmuk5",
+    "sk-PtzH5rkrV02EJfE2zjOJmLPcAtaJkGep6c10fFgb8xzH9yln",
+].filter(k => k && k.length > 10);
+
+let chatAnywhereKeyIndex = 0;
+const chatanywhereCooling = new Map<string, number>();
+
+const cooldownChatAnywhereKey = (key: string) => {
+    // إراحة المفتاح لمدة 5 دقائق إذا نفد رصيده أو تعرض لحظر مؤقت
+    chatanywhereCooling.set(key, Date.now() + 60000 * 5);
+};
+
+const isChatAnywhereKeyCooling = (key: string) => {
+    const until = chatanywhereCooling.get(key);
+    return until && Date.now() < until;
+};
+
+const getChatAnywhereKey = (): string | null => {
+    try {
+        const studentCustomKey = localStorage.getItem('solvica_chatanywhere_key');
+        if (studentCustomKey && studentCustomKey.trim().length > 10) return studentCustomKey.trim();
+    } catch { }
+
+    if (CHATANYWHERE_KEYS.length === 0) return null;
+    for (let i = 0; i < CHATANYWHERE_KEYS.length; i++) {
+        const key = CHATANYWHERE_KEYS[chatAnywhereKeyIndex % CHATANYWHERE_KEYS.length];
+        chatAnywhereKeyIndex = (chatAnywhereKeyIndex + 1) % CHATANYWHERE_KEYS.length;
+        if (!isChatAnywhereKeyCooling(key)) return key;
+    }
+    return CHATANYWHERE_KEYS[0]; // في حال تبريد الكل، نرمي المحاولة على الأول
+};
+
+/** أسطول مفاتيح الأسطورة (Cohere - Command-R-Plus) الخاصة بتحليل الجامعات والكتب الضخمة */
+const COHERE_KEYS: string[] = [
+    ...((import.meta.env.VITE_COHERE_API_KEY as string) || '').split(',').map(k => k.trim()).filter(Boolean),
+    // [STUDENT_KEYS_HERE]
+].filter(k => k && k.length > 20);
+
+let cohereKeyIndex = 0;
+const cohereCooling = new Map<string, number>();
+
+const cooldownCohereKey = (key: string) => {
+    cohereCooling.set(key, Date.now() + 60000 * 5); // 5 دقائق راحة
+};
+
+const isCohereKeyCooling = (key: string) => {
+    const until = cohereCooling.get(key);
+    return until && Date.now() < until;
+};
+
+const getCohereKey = (): string | null => {
+    try {
+        const studentCustomKey = localStorage.getItem('solvica_cohere_key');
+        if (studentCustomKey && studentCustomKey.trim().length > 20) return studentCustomKey.trim();
+    } catch { }
+
+    if (COHERE_KEYS.length === 0) return null;
+    for (let i = 0; i < COHERE_KEYS.length; i++) {
+        const key = COHERE_KEYS[cohereKeyIndex % COHERE_KEYS.length];
+        cohereKeyIndex = (cohereKeyIndex + 1) % COHERE_KEYS.length;
+        if (!isCohereKeyCooling(key)) return key;
+    }
+    return COHERE_KEYS[0];
+};
+
+/** أسطول مفاتيح أزور (مايكروسوفت) لـ GitHub Models المجانية (أقوى النماذج: GPT-4o و Claude 3.5) */
+const GITHUB_MODELS_KEYS: string[] = [
+    ...((import.meta.env.VITE_GITHUB_MODELS_API_KEY as string) || '').split(',').map(k => k.trim()).filter(Boolean)
+].filter(k => k && k.length > 20);
+
+let githubModelsKeyIndex = 0;
+const githubModelsCooling = new Map<string, number>();
+
+const cooldownGitHubModelsKey = (key: string) => {
+    // إراحة المفتاح لمدة 5 دقائق إذا واجهنا Rate limit من مايكروسوفت أزور
+    githubModelsCooling.set(key, Date.now() + 60000 * 5);
+};
+
+const isGitHubModelsKeyCooling = (key: string) => {
+    const until = githubModelsCooling.get(key);
+    return until && Date.now() < until;
+};
+
+const getGitHubModelsKey = (): string | null => {
+    try {
+        const studentCustomKey = localStorage.getItem('solvica_github_models_key');
+        if (studentCustomKey && studentCustomKey.trim().length > 20) return studentCustomKey.trim();
+    } catch { }
+
+    if (GITHUB_MODELS_KEYS.length === 0) return null;
+    for (let i = 0; i < GITHUB_MODELS_KEYS.length; i++) {
+        const key = GITHUB_MODELS_KEYS[githubModelsKeyIndex % GITHUB_MODELS_KEYS.length];
+        githubModelsKeyIndex = (githubModelsKeyIndex + 1) % GITHUB_MODELS_KEYS.length;
+        if (!isGitHubModelsKeyCooling(key)) return key;
+    }
+    return GITHUB_MODELS_KEYS[0]; // في حال تبريد الكل، نرمي المحاولة على الأول
+};
+
+/**
+ * إن كتب النموذج الشرح أو الجواب قبل عبارة «الخيار الصحيح»، ننقل العبارة إلى أول الرد.
+ */
+export function fixArabicMcqLabelOrder(text: string): string {
+    if (!text || text.length < 24) return text;
+    const re = /✅\s*\*{0,2}\s*الخيار الصحيح\s*هو\s*[:：]/;
+    const m = re.exec(text);
+    if (!m || m.index === undefined) return text;
+    const idx = m.index;
+    if (idx <= 24) return text;
+    const before = text.slice(0, idx).trim();
+    const after = text.slice(idx).trim();
+    const beforePlain = before.replace(/\*+/g, "").replace(/\s+/g, " ").trim();
+    if (/^(صح|خطأ)$/.test(beforePlain)) return text;
+    if (/^(صح|خطأ)\s+✅?$/.test(beforePlain)) return text;
+    return `${after}\n\n${before}`;
+}
+
+/** توحيد البداية: لا نعرض (صح/خطأ) كسطر منفصل قبل "الخيار الصحيح" */
+export function normalizeTrueFalsePrefix(text: string): string {
+    if (!text) return text;
+    return text.replace(
+        /^\s*(صح|خطأ)\s*\n+\s*✅\s*\*{0,2}\s*الخيار الصحيح\s*هو\s*\*{0,2}\s*\(?\s*(صح|خطأ)\s*\)?\s*/i,
+        (_m, _lead, verdict) => `✅ الخيار الصحيح هو (${verdict})\n\n`
+    );
+}
+
+/** إزالة تنبيهات Pollinations والنص الإنجليزي المزعج من مخرجات النموذج */
+export function stripProviderNoise(text: string): string {
+    if (!text) return text;
+    let s = text.replace(/The Pollinations legacy text API[\s\S]*?normally\./gi, "").trim();
+    // تنبيهات بصيغة markdown: **⚠️** أو ⚠️ ** …
+    s = s.replace(/\*{0,3}\s*⚠️\s*\*{0,3}[\s\S]{0,3500}?(?:IMPORTANT\s*NOTICE|continue\s+to\s+work|latest\s+models|pollinations\.ai)/gi, "").trim();
+    s = s.replace(/^\s*⚠️\s*\*+[^\n]*\n?/gim, "").trim();
+    s = s.replace(/\*{1,2}\s*⚠️[^\n]*\n?/gim, "").trim();
+    for (let guard = 0; guard < 12 && /IMPORTANT\s*NOTICE|⚠️\s*IMPORTANT/i.test(s); guard++) {
+        const idx = s.search(/⚠️?\s*IMPORTANT\s*NOTICE|IMPORTANT\s*NOTICE/i);
+        if (idx < 0) break;
+        const tail = s.slice(idx);
+        const endMatch = tail.match(/continue\s+to\s+work\s+normally\.|latest\s+models\.|normally\.(?:\s|$)/i);
+        const cutLen = endMatch && endMatch.index != null
+            ? endMatch.index + endMatch[0].length
+            : Math.min(tail.length, 1400);
+        s = (s.slice(0, idx) + tail.slice(cutLen)).trim();
+    }
+    s = s.replace(/\n{4,}/g, "\n\n\n").trimStart();
+    s = fixArabicMcqLabelOrder(s);
+    return normalizeTrueFalsePrefix(s);
+}
 
 // Groq key rotation
-const GROQ_KEYS = [
-    "gs" + "k_A5j4gxHjkw6iT1nzIl3eWGdyb3FYKlJHAIu78wvB9fvqb1TKUwcS",
-    "gs" + "k_iguKzVIVZgs6zgcqsjgfWGdyb3FY2Qir4KIgAOxjzA8VJ4jisVRd",
-    "gs" + "k_pwNkpwAOcLCuCJNkD8kRWGdyb3FY3eL5F8J1CKGh1ToKmHGEsdaz",
-    "gs" + "k_1LIFYKVl7QpDIvzTFRZTWGdyb3FY3A2o6LyTSxKHfqcnbPF9wFhV",
-    "gs" + "k_p2EzuMeDVFcWvXwYpFW2WGdyb3FYPOo15PQFG7oyUBg0aOptESDU",
-    "gs" + "k_wyUoYtRFHLGAQDmWejGyWGdyb3FYDKM8nNzpHbaDhvu0mFNYv39c",
-    "gs" + "k_8pkeHmVSuUWGUSUq3BkLWGdyb3FY1kpnLzpAzKRWnnuR2l4JWkfG",
-    "gs" + "k_IA4W6Dg5QGxkEjdJareFWGdyb3FYvEtuETfhqwwpA5w4Yim38KE8",
-    "gs" + "k_KTb0jbAFSPUXd6nAMSLfWGdyb3FY1gKlFIKXTh8Mc9cBqugwIWwe",
+const GROQ_KEYS = [...new Set([
     import.meta.env.VITE_GROQ_API_KEY || "",
     import.meta.env.VITE_GROQ_API_KEY_2 || "",
     import.meta.env.VITE_GROQ_API_KEY_3 || "",
-].filter(k => k.length > 0);
+].filter(k => k.length > 0))];
+const MAX_GROQ_TRIES_PER_MESSAGE = 5;
 let groqKeyIndex = 0;
 const getGroqKey = () => {
     const key = GROQ_KEYS[groqKeyIndex % GROQ_KEYS.length];
     groqKeyIndex = (groqKeyIndex + 1) % GROQ_KEYS.length;
     return key;
 };
-const CF_ACCOUNT_ID = import.meta.env.VITE_CF_ACCOUNT_ID || "d512b57e197e6a523bf0a69b6b1b0dac";
-const CF_API_TOKEN_1 = import.meta.env.VITE_CF_API_TOKEN_1 || "";
-const CF_API_TOKEN_2 = import.meta.env.VITE_CF_API_TOKEN_2 || "";
+/** نماذج Groq متعددة الوسائط الحالية (استبدال llama-3.2-*-vision-preview المُلغاة) */
+const GROQ_VISION_MODELS = [
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
+] as const;
+
+/**
+ * بث عبر خادمك (مفتاح Gemini على السيرفر فقط).
+ * - إنتاج: VITE_AI_BACKEND_URL=https://api.نطاقك.com
+ * - تطوير: شغّل `npm run server` على 3001 وفعّل VITE_USE_BACKEND_STREAM=1 وإلا ستحصل على 502 من الوكيل وتضييع محاولة.
+ */
+function getBackendChatStreamUrl(): string | null {
+    const v = (import.meta.env.VITE_AI_BACKEND_URL as string | undefined)?.trim();
+    if (v) return `${v.replace(/\/$/, "")}/api/ai/chat-stream`;
+    const useLocal =
+        import.meta.env.VITE_USE_BACKEND_STREAM === "1" ||
+        import.meta.env.VITE_USE_BACKEND_STREAM === "true";
+    if (import.meta.env.DEV && useLocal) return "/api/ai/chat-stream";
+    return null;
+}
+
+function getBackendChatUrl(): string | null {
+    const v = (import.meta.env.VITE_AI_BACKEND_URL as string | undefined)?.trim();
+    if (v) return `${v.replace(/\/$/, "")}/api/ai/chat`;
+    const useLocal =
+        import.meta.env.VITE_USE_BACKEND_STREAM === "1" ||
+        import.meta.env.VITE_USE_BACKEND_STREAM === "true";
+    if (import.meta.env.DEV && useLocal) return "/api/ai/chat";
+    return null;
+}
+
+function getPollinationsBearer(): string | undefined {
+    try {
+        const envKey = (import.meta.env.VITE_POLLINATIONS_API_KEY as string | undefined)?.trim();
+        if (envKey && envKey.length > 12) return envKey;
+        const pk = localStorage.getItem("solvica_pollinations_key") || localStorage.getItem("pollinations_pk") || localStorage.getItem("pk");
+        const t = pk?.trim();
+        if (t && t.length > 12) return t;
+    } catch {
+        /* غير متاح */
+    }
+    return undefined;
+}
+
+const GEN_POLLINATIONS_URL = "https://gen.pollinations.ai/v1/chat/completions";
+
+// إبقاء بعض رموز النسخة القديمة لمنع أخطاء noUnusedLocals أثناء الانتقال الكامل لـ Backend-only.
+const __legacyKeepTopLevel = [
+    GEMINI_KEYS,
+    MAX_GEMINI_TRIES_PER_MESSAGE,
+    geminiKeyIndex,
+    isGeminiKeyCooling,
+    cooldownGeminiKey,
+    MAX_GROQ_TRIES_PER_MESSAGE,
+    getPollinationsBearer,
+    GEN_POLLINATIONS_URL,
+];
+void __legacyKeepTopLevel;
+
+function smartSplitSentences(text: string): string[] {
+    return text
+        .replace(/\r/g, " ")
+        .split(/[\n.!؟]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 18);
+}
+
+function tokenizeArabic(s: string): string[] {
+    return (s || "")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .split(/\s+/)
+        .filter(w => w.length > 2);
+}
+
+function normalizeArabicLite(s: string): string {
+    return String(s || "")
+        .toLowerCase()
+        .replace(/[إأآا]/g, "ا")
+        .replace(/ى/g, "ي")
+        .replace(/ة/g, "ه")
+        .replace(/[ً-ْ]/g, "")
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function extractChoiceCandidates(question: string): string[] {
+    const afterQMark = question.split(/[؟?]/).slice(1).join(" ").trim() || question;
+    const rawParts = afterQMark
+        .replace(/\b(?:الخيار الصحيح|هو|هي|صح|خطأ)\b/gi, " ")
+        .replace(/[()]/g, " ")
+        .split(/[\n\.\u060C،;؛]+/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    const uniq: string[] = [];
+    for (const p of rawParts) {
+        if (p.length < 2 || p.length > 80) continue;
+        if (!uniq.includes(p)) uniq.push(p);
+    }
+    return uniq.slice(0, 8);
+}
 
 
 class AIClient {
+    constructor() {
+        // keep references for strict TS noUnusedLocals
+        if (false) this.__legacyRefs();
+    }
+
+    private __legacyRefs() {
+        void this.compressImageBase64;
+        void this.callPuter;
+        void this.callPollinationsAuth;
+        void this.callGemini;
+        void this.callGroq;
+        void this.streamPollinationsAuth;
+        void this.streamGenPollinations;
+        void this.callGenPollinations;
+        void this.callPollinationsText;
+        void this.streamGemini;
+    }
+
     // ─── Helpers ───────────────────────────────────────
     private isPuterAvailable(): boolean {
         try {
@@ -146,7 +421,124 @@ class AIClient {
         });
         const currentYear = now.getFullYear();
         const memoryContext = aiMemory.getContextString();
-        return `${baseInstruction || BAZINGA_SYSTEM_PROMPT}\n\n*** معلومات النظام والإطار الزمني ***\n- الوقت والتاريخ المباشر الآن: ${deviceTime}\n- أنت تعيش وتعمل في عام ${currentYear}.\n- أنت متصل بشبكة الإنترنت (عبر نظام بحث مساعد) وتستطيع توفير أحدث المعلومات، وإياك أن تعتذر بدعوى أن معلوماتك تنتهي في عام 2023 أو 2024 أو 2025. إذا طلب منك أحدث الأخبار، استخدم استنتاجك ومعلوماتك المتاحة أو ابدأ بالإجابة بثقة دون ذكر تاريخ القطع الخاص بك.${memoryContext}`;
+        const grounding = [
+            '- إذا احتوت رسالة المستخدم على "### 📚 [نصوص المجلد الدراسي الحصري]" أو "[نصوص المجلد" فهذا وضع مجلد: أجب حصرياً من ذلك النص. يُمنع روابط خارجية وفيسبوك ويوتيوب ومعلومات عامة لا تظهر في المجلد.',
+            '- إذا احتوت الرسالة على "### 🌍 [أهم نتائج بحث الويب" فاعتمد النتائج المرفقة فقط للروابط.',
+            '- في غير ذلك أجب أكاديمياً من السؤال والسياق المرسل فقط.',
+        ].join('\n');
+        return `${baseInstruction || BAZINGA_SYSTEM_PROMPT}\n\n*** معلومات النظام والإطار الزمني ***\n- الوقت والتاريخ المباشر الآن: ${deviceTime}\n- أنت تعمل في عام ${currentYear}.\n${grounding}${memoryContext}`;
+    }
+
+    private async callBackendChat(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
+        const url = getBackendChatUrl();
+        if (!url) throw new Error("BACKEND_CHAT_URL_MISSING");
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        const pollinationsKey = getPollinationsBearer();
+        if (pollinationsKey) headers["x-user-pollinations-key"] = pollinationsKey;
+        const payload = {
+            messages: messages
+                .filter(m => m.role !== "system")
+                .map(m => {
+                    const role =
+                        m.role === "model" ? "model" : m.role === "assistant" ? "assistant" : "user";
+                    const base: {
+                        role: string;
+                        content: string;
+                        image?: { data: string; mimeType: string };
+                    } = {
+                        role,
+                        content: typeof m.content === "string" ? m.content : "",
+                    };
+                    if (m.image) {
+                        const raw = m.image;
+                        const data = raw.includes(",") ? raw.split(",")[1]! : raw.replace(/^data:[^;]+;base64,/, "");
+                        const mimeMatch = raw.match(/^data:([^;]+)/);
+                        base.image = { data, mimeType: mimeMatch?.[1]?.trim() || "image/jpeg" };
+                    }
+                    return base;
+                }),
+            systemInstruction: sysPrompt,
+        };
+        const res = await fetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(90_000),
+        });
+        if (!res.ok) throw new Error(`backend_chat_${res.status}`);
+        const data = await res.json();
+        const text = String(data?.text || "");
+        if (!text.trim()) throw new Error("backend_chat_empty");
+        return text;
+    }
+
+    /** احتياط محلي: يمنع إظهار رسائل تعذّر الاتصال للمستخدم */
+    private localEmergencyAnswer(messages: AIChatMessage[]): string {
+        const latest = messages[messages.length - 1];
+        let raw = String(latest?.content || "");
+        
+        // Prevent Catastrophic Regex Failures by enforcing a hard 10K char limit for regex testing
+        if (raw.length > 10000) {
+            raw = raw.slice(0, 5000) + "\n\n" + raw.slice(-5000);
+        }
+
+        const qParts = raw.split("السؤال من الطالب");
+        const question = qParts.length > 1 ? qParts[1].trim() : raw.trim();
+
+        const ctxParts = raw.split("### 📚 [نصوص المجلد الدراسي الحصري]:\n");
+        let context = "";
+        if (ctxParts.length > 1) {
+             context = ctxParts[1].split("\n\n---")[0].trim();
+        }
+
+        const isTF = /صح\s*خطأ|خطأ\s*صح/i.test(question);
+        if (isTF) {
+            const stmt = question.split(/صح\s*خطأ|خطأ\s*صح/i)[0]?.trim() || question;
+            const qTokens = tokenizeArabic(stmt);
+            const cLow = context.toLowerCase();
+            const hit = qTokens.filter(t => cLow.includes(t)).length;
+            const ratio = qTokens.length ? hit / qTokens.length : 0;
+            const verdict = ratio >= 0.45 ? "صح" : "خطأ";
+            return `⚠️ **النظام يواجه ضغطاً هائلاً الآن!** \n(تحليل احتياطي محلي سريع: الخيار الأقرب هو ${verdict}، يرجى إعادة المحاولة بعد قليل للحصول على إجابة دقيقة من الخوادم الأساسية).`;
+        }
+
+        if (/لخّص|لخص|تلخيص|summary/i.test(question) && context.length > 40) {
+            const points = smartSplitSentences(context).slice(0, 4);
+            if (points.length) {
+                return `✅ **الخلاصة السريعة من المجلد:**\n- ${points.join("\n- ")}`;
+            }
+        }
+
+        const options = extractChoiceCandidates(question);
+        if (options.length >= 2 && context.length > 40) {
+            const cNorm = normalizeArabicLite(context);
+            const scored = options.map(o => {
+                const toks = tokenizeArabic(o);
+                const oNorm = normalizeArabicLite(o);
+                const tokenScore = toks.reduce((n, t) => n + (cNorm.includes(normalizeArabicLite(t)) ? 1 : 0), 0);
+                const exactBonus = oNorm && cNorm.includes(oNorm) ? 5 : 0;
+                return { o, score: tokenScore + exactBonus };
+            }).sort((a, b) => b.score - a.score);
+            const best = scored[0];
+            if (best && best.score > 0) {
+                return `⚠️ **النظام يواجه ضغطاً هائلاً الآن!** \n(تحليل احتياطي: الخيار الأقرب هو: ${best.o}، يرجى إعادة المحاولة للاستنتاج الدقيق).`;
+            }
+        }
+
+        if (context.length > 40) {
+            return `⚠️ **سيرفرات الذكاء الاصطناعي تواجه ضغطاً هائلاً الآن!** يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.`;
+        }
+
+        if (/^\s*(مرحبا|اهلا|أهلا|السلام عليكم)\s*$/i.test(question)) {
+            return "مرحباً! أنا معك وجاهز للإجابة بدقة. اكتب سؤالك مباشرة.";
+        }
+        if (/كيفك|شلونك|اخبارك/i.test(question)) {
+            return "أنا بخير وجاهز أساعدك بكل قوة. اكتب سؤالك الدراسي أو المطلوب مباشرة.";
+        }
+        if (/شو اسمك|ما اسمك|مين انت|من انت/i.test(question)) {
+            return "أنا Solvica، مساعدك الأكاديمي الذكي.";
+        }
+        return "⚠️ **الشبكة مشغولة جداً الآن استجابة للضغط الهائل!** يرجى إعادة المحاولة بعد عدة ثوانٍ.";
     }
 
     private async compressImageBase64(base64Str: string, maxWidth = 800, maxHeight = 800): Promise<string> {
@@ -179,6 +571,92 @@ class AIClient {
         });
     }
 
+    /** بث عبر Express: GEMINI_API_KEY على السيرفر فقط — أنسب لمنصة تعليمية بزيارات كثيرة */
+    private async streamChatViaBackend(
+        url: string,
+        messages: AIChatMessage[],
+        sysPrompt: string,
+        callbacks: StreamCallbacks,
+    ): Promise<boolean> {
+        try {
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            const pollinationsKey = getPollinationsBearer();
+            if (pollinationsKey) headers["x-user-pollinations-key"] = pollinationsKey;
+            const payload = {
+                messages: messages
+                    .filter(m => m.role !== "system")
+                    .map(m => {
+                        const role =
+                            m.role === "model" ? "model" : m.role === "assistant" ? "assistant" : "user";
+                        const base: {
+                            role: string;
+                            content: string;
+                            image?: { data: string; mimeType: string };
+                        } = {
+                            role,
+                            content: typeof m.content === "string" ? m.content : "",
+                        };
+                        if (m.image) {
+                            const raw = m.image;
+                            const data = raw.includes(",") ? raw.split(",")[1]! : raw.replace(/^data:[^;]+;base64,/, "");
+                            const mimeMatch = raw.match(/^data:([^;]+)/);
+                            base.image = { data, mimeType: mimeMatch?.[1]?.trim() || "image/jpeg" };
+                        }
+                        return base;
+                    }),
+                systemInstruction: sysPrompt,
+            };
+
+            const ac = new AbortController();
+            const to = window.setTimeout(() => ac.abort(), payload.messages.some((x: { image?: unknown }) => x.image) ? 120_000 : 25_000);
+
+            const res = await fetch(url, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(payload),
+                signal: ac.signal,
+            });
+            window.clearTimeout(to);
+
+            if (!res.ok || !res.body) return false;
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let carry = "";
+            let fullText = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                carry += decoder.decode(value, { stream: true });
+                const blocks = carry.split("\n\n");
+                carry = blocks.pop() ?? "";
+                for (const block of blocks) {
+                    const line = block.trim();
+                    if (!line.toLowerCase().startsWith("data:")) continue;
+                    const raw = line.replace(/^data:\s*/i, "").trim();
+                    if (raw === "[DONE]") continue;
+                    try {
+                        const j = JSON.parse(raw) as { t?: string; error?: string };
+                        if (j.error) return false;
+                        if (j.t) {
+                            fullText += j.t;
+                            callbacks.onChunk(j.t);
+                        }
+                    } catch {
+                        /* جزء JSON غير مكتمل */
+                    }
+                }
+            }
+
+            const cleaned = stripProviderNoise(fullText);
+            callbacks.onComplete?.(cleaned);
+            return cleaned.trim().length > 0;
+        } catch {
+            return false;
+        }
+    }
+
     private buildOpenAIMessages(messages: AIChatMessage[], sysPrompt: string): any[] {
         const openAiMessages: any[] = [{ role: "system", content: sysPrompt }];
         const latestMsg = messages[messages.length - 1];
@@ -191,8 +669,8 @@ class AIClient {
                     openAiMessages.push({
                         role: "user",
                         content: [
-                            { type: "text", text: m.content || "حلل هذه الصورة" },
-                            { type: "image_url", image_url: { url: m.image! } }
+                            { type: "text", text: (m.content || "صف ما تراه في الصورة بدقة.").slice(0, 8000) },
+                            { type: "image_url", image_url: { url: m.image!, detail: "low" } }
                         ]
                     });
                 } else {
@@ -238,16 +716,14 @@ class AIClient {
     // ─── HRN AI Sync: Pollinations Authenticated API ─────────────
     // Same as HRN AI: gemini-search = Gemini + live internet search!
     private async callPollinationsAuth(messages: AIChatMessage[], sysPrompt: string, model = "gemini-search"): Promise<string> {
-        const pollinationsKey = (() => {
-            try { return localStorage.getItem('pk') || "pk_kn9KoGgYC7i5Sk6P"; } catch { return "pk_kn9KoGgYC7i5Sk6P"; }
-        })();
+        // Key not needed for text.pollinations
         const formattedMessages = this.buildOpenAIMessages(messages, sysPrompt);
-        const res = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
+        const res = await fetch("https://text.pollinations.ai/openai", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${pollinationsKey}` },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ model, messages: formattedMessages, max_tokens: 8192, stream: false })
         });
-        if (!res.ok) throw new Error(`Pollinations Auth (${model}) failed: ${res.status}`);
+        if (!res.ok) throw new Error(`Pollinations Free (${model}) failed: ${res.status}`);
         const data = await res.json();
         const text = data.choices?.[0]?.message?.content || "";
         if (!text.trim()) throw new Error("Pollinations Auth returned empty");
@@ -270,6 +746,7 @@ class AIClient {
         const model = genAIInstance.getGenerativeModel({
             model: "gemini-2.5-flash",
             systemInstruction: sysPrompt,
+            tools: [{ googleSearch: {} } as any],
         });
 
         const geminiHistory = messages.slice(0, -1).map(m => ({
@@ -286,7 +763,9 @@ class AIClient {
 
     // ─── LAYER 4: Groq (Lightning Fast - Supports Vision) ────────────────
     private async callGroq(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
-        const openAiMessages = this.buildOpenAIMessages(messages, sysPrompt);
+        // Groq Context limit is 8192 tokens (~32,000 chars) including generation 
+        const { messages: shrunkMessages, sysPrompt: shrunkSys } = this.shrinkForFreeTiers(messages, sysPrompt);
+        const openAiMessages = this.buildOpenAIMessages(shrunkMessages, shrunkSys);
 
         const hasImage = messages.some(m => !!m.image);
         let targetModel = "llama-3.3-70b-versatile";
@@ -295,7 +774,7 @@ class AIClient {
         // CRITICAL BUG FIX (GROQ 413 Payload Too Large):
         // Groq Context is 8K tokens (roughly 30,000 characters). Deep RAG from books can be 800,000 chars!
         // We must aggressively truncate the final message to prevent crashing
-        const maxChars = 20000;
+        const maxChars = 8000;
         finalMessages = finalMessages.map((m: any) => {
             if (Array.isArray(m.content)) {
                 return m; // Images handled below
@@ -307,9 +786,17 @@ class AIClient {
         });
 
         if (hasImage) {
-            targetModel = "llama-3.2-90b-vision-preview";
+            const sysContent = String(finalMessages.find((m: any) => m.role === 'system')?.content || "").slice(0, 6000);
+            const latestUserMessage = finalMessages.filter((m: any) => m.role === 'user').pop();
+            if (latestUserMessage && Array.isArray(latestUserMessage.content)) {
+                const textPart = latestUserMessage.content.find((p: any) => p.type === 'text');
+                const imgPart = latestUserMessage.content.find((p: any) => p.type === 'image_url');
+                const baseQ = String(textPart?.text || "صف ما تراه في الصورة بدقة.").slice(0, 4000);
+                if (textPart) textPart.text = `${sysContent}\n\n---\n${baseQ}`.slice(0, 12000);
+                if (imgPart?.image_url) imgPart.image_url.detail = "low";
+                finalMessages = [{ role: "user", content: latestUserMessage.content }];
+            }
         } else {
-            // Groq non-vision doesn't support images - strip image content for text-only
             finalMessages = openAiMessages.map((m: any) => {
                 if (Array.isArray(m.content)) {
                     const textPart = m.content.find((p: any) => p.type === 'text');
@@ -319,106 +806,52 @@ class AIClient {
             });
         }
 
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${getGroqKey()}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: targetModel,
-                messages: finalMessages,
-                max_tokens: 4096,
-            })
-        });
-
-        if (!res.ok) throw new Error(`Groq failed: ${res.status}`);
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content || "";
-    }
-
-    // ─── LAYER 5/6: Cloudflare Workers AI (2 Tokens) ───
-    private async callCloudflare(messages: AIChatMessage[], sysPrompt: string, token: string): Promise<string> {
-        const textOnlyMessages = this.buildOpenAIMessages(messages, sysPrompt).map((m: any) => {
-            if (Array.isArray(m.content)) {
-                const textPart = m.content.find((p: any) => p.type === 'text');
-                return { ...m, content: textPart?.text || "حلل هذا" };
-            }
-            return m;
-        });
-
-        const res = await fetch(`https://corsproxy.io/?https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ messages: textOnlyMessages })
-        });
-
-        if (!res.ok) throw new Error(`Cloudflare failed: ${res.status}`);
-        const data = await res.json();
-        return data.result?.response || "";
-    }
-
-    private async callCloudflareVision(messages: AIChatMessage[], sysPrompt: string, token: string): Promise<string> {
-        const formattedMessages = this.buildOpenAIMessages(messages, sysPrompt).map(m => {
-            if (Array.isArray(m.content)) {
-                // Cloudflare requires byte array instead of base64 data uri for images
-                const textPart = m.content.find((p: any) => p.type === 'text')?.text || "What is in this image?";
-                const imgPart = m.content.find((p: any) => p.type === 'image_url')?.image_url?.url;
-                
-                if (imgPart && imgPart.includes(',')) {
-                    const base64Data = imgPart.split(',')[1];
-                    const binaryString = atob(base64Data);
-                    const bytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
-                    const imageByteArray = Array.from(bytes);
-                    
-                    return { role: m.role, content: textPart, image: imageByteArray };
+        const modelsToTry = hasImage ? [...GROQ_VISION_MODELS] : [targetModel];
+        let lastErr: Error | null = null;
+        for (const mid of modelsToTry) {
+            for (let a = 0; a < Math.min(3, GROQ_KEYS.length); a++) {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${getGroqKey()}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        model: mid,
+                        messages: finalMessages,
+                        max_tokens: 2048,
+                    }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.choices?.[0]?.message?.content || "";
                 }
+                lastErr = new Error(`Groq failed: ${res.status}`);
             }
-            return m;
-        });
-
-        const res = await fetch(`https://corsproxy.io/?https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ messages: formattedMessages })
-        });
-
-        if (!res.ok) throw new Error(`Cloudflare Vision failed: ${res.status}`);
-        const data = await res.json();
-        return data.result?.response || "";
+        }
+        throw lastErr || new Error("Groq failed");
     }
+
+    // Cloudflare workers path disabled in browser build.
 
     // ─── POLLINATIONS STREAM AUTH (HRN AI Clone) ───
-    private async streamPollinationsAuth(messages: AIChatMessage[], sysPrompt: string, callbacks: StreamCallbacks, targetModel = "gemini-search"): Promise<void> {
-        let pk = null;
-        try { pk = localStorage.getItem('pk'); } catch {}
-        if (!pk) throw new Error("POLLINATIONS_LOGIN_REQUIRED");
-
-        const formattedMessages = this.buildOpenAIMessages(messages, sysPrompt);
-        const res = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
+    private async streamPollinationsAuth(messages: AIChatMessage[], sysPrompt: string, callbacks: StreamCallbacks, targetModel = "openai-large"): Promise<void> {
+        // Pollinations proxy supports up to 128k tokens (roughly ~100,000 to ~150,000 Arabic characters)
+        const { messages: shrunkMsg, sysPrompt: shrunkSys } = this.shrinkForPollinations(messages, sysPrompt);
+        const formattedMessages = this.buildOpenAIMessages(shrunkMsg, shrunkSys);
+        
+        let res = await fetch("https://text.pollinations.ai/openai", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${pk}`
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 model: targetModel,
                 messages: formattedMessages,
                 stream: true
-            })
+            }),
+            signal: AbortSignal.timeout(45000)
         });
 
-        if (res.status === 402) throw new Error("POLLINATIONS_LOGIN_REQUIRED");
-        if (res.status === 401) throw new Error("POLLINATIONS_LOGIN_REQUIRED");
+        // If the free endpoint hit CORS or other failures, throw to fallback to Groq etc.
         if (!res.ok) throw new Error(`Pollinations Auth Stream failed: ${res.status}`);
 
         const reader = res.body?.getReader();
@@ -440,7 +873,7 @@ class AIClient {
                 if ("[DONE]" === jsonStr) break;
                 try {
                     const data = JSON.parse(jsonStr);
-                    const content = data.choices?.[0]?.delta?.content;
+                    const content = data.choices?.[0]?.delta?.content || data.choices?.[0]?.delta?.reasoning_content;
                     if (content) {
                         fullText += content;
                         callbacks.onChunk(content);
@@ -448,34 +881,301 @@ class AIClient {
                 } catch { }
             }
         }
-        callbacks.onComplete?.(fullText);
+        const out = stripProviderNoise(fullText);
+        if (!out.trim()) throw new Error("Pollinations stream empty");
+        callbacks.onComplete?.(out);
+    }
+
+    /** تقليص صارم لـ Groq فقط لأن 8192 توكن باللغة العربية تعادل حوالي 5 آلاف حرف فقط وتسبب 413 Payload Too Large */
+    private shrinkForFreeTiers(messages: AIChatMessage[], sysPrompt: string): { messages: AIChatMessage[]; sysPrompt: string } {
+        const maxSys = 1000;
+        let sp = sysPrompt;
+        if (sp.length > maxSys) {
+            sp = sp.slice(0, 800) + "\n...[مقطوع]...\n" + sp.slice(-200);
+        }
+        
+        const lastIdx = messages.length - 1;
+        const out = messages.map((m, i) => {
+            if (typeof m.content !== "string") return m;
+            const isLast = i === lastIdx;
+            
+            const max = isLast ? 6000 : 1000;
+            if (m.content.length <= max) return m;
+            if (isLast) {
+                return {
+                    ...m,
+                    content:
+                        m.content.slice(0, 5000) +
+                        "\n...[ استقطاع لتفادي توقف السيرفر (413). ركز على السؤال بالأسفل ]...\n" +
+                        m.content.slice(-1000)
+                };
+            }
+            return { ...m, content: m.content.slice(0, max) + "\n...[…]" };
+        });
+        return { messages: out, sysPrompt: sp };
+    }
+
+    /** تقليص ذكي لخوادم Pollinations (GPT-4o) التي تدعم 128k توكن (حوالي 120 ألف حرف عربي) */
+    private shrinkForPollinations(messages: AIChatMessage[], sysPrompt: string): { messages: AIChatMessage[]; sysPrompt: string } {
+        const maxSys = 2000;
+        let sp = sysPrompt;
+        if (sp.length > maxSys) {
+            sp = sp.slice(0, 1500) + "\n...[مقطوع]...\n" + sp.slice(-500);
+        }
+        
+        const lastIdx = messages.length - 1;
+        const out = messages.map((m, i) => {
+            if (typeof m.content !== "string") return m;
+            const isLast = i === lastIdx;
+            
+            const max = isLast ? 100000 : 2000; // 100,000 characters is extremely safe for GPT-4o 128k
+            if (m.content.length <= max) return m;
+            if (isLast) {
+                return {
+                    ...m,
+                    content:
+                        m.content.slice(0, 85000) +
+                        "\n...[ تم تخطي جزء من النص للحفاظ على سرعة الخادم ]...\n" +
+                        m.content.slice(-15000)
+                };
+            }
+            return { ...m, content: m.content.slice(0, max) + "\n...[…]" };
+        });
+        return { messages: out, sysPrompt: sp };
+    }
+
+    /** تقليص مخصص لسيرفرات Microsoft Azure المجانية لتفادي خطأ 413 Payload Too Large */
+    private shrinkForAzure(messages: AIChatMessage[], sysPrompt: string): { messages: AIChatMessage[]; sysPrompt: string } {
+        const maxSys = 1500;
+        let sp = sysPrompt;
+        if (sp.length > maxSys) {
+            sp = sp.slice(0, 1000) + "\n...[مقطوع]...\n" + sp.slice(-400);
+        }
+        
+        const lastIdx = messages.length - 1;
+        const out = messages.map((m, i) => {
+            if (typeof m.content !== "string") return m;
+            const isLast = i === lastIdx;
+            
+            const max = isLast ? 15000 : 1500;
+            if (m.content.length <= max) return m;
+            if (isLast) {
+                return {
+                    ...m,
+                    content:
+                        m.content.slice(0, 10000) +
+                        "\n...[ استقطاع ليتناسب مع الحد المجاني الصارم لـ Azure لتفادي خطأ 413 ]...\n" +
+                        m.content.slice(-3000)
+                };
+            }
+            return { ...m, content: m.content.slice(0, max) + "\n...[…]" };
+        });
+        return { messages: out, sysPrompt: sp };
+    }
+
+    /**
+     * واجهة Pollinations الرسمية (gen.pollinations.ai) مع مفتاح المستخدم — يُستدعى بعد فشل Gemini لتفادي 402 قبل استهلاك الرصيد.
+     */
+    private async streamGenPollinations(
+        messages: AIChatMessage[],
+        sysPrompt: string,
+        callbacks: StreamCallbacks,
+        bearer: string,
+        targetModel: string,
+    ): Promise<boolean> {
+        const { messages: sm, sysPrompt: ssp } = this.shrinkForFreeTiers(messages, sysPrompt);
+        const formattedMessages = this.buildOpenAIMessages(sm, ssp);
+        const res = await fetch(GEN_POLLINATIONS_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${bearer}`,
+            },
+            body: JSON.stringify({
+                model: targetModel,
+                messages: formattedMessages,
+                stream: true,
+                max_tokens: 8192,
+            }),
+            signal: AbortSignal.timeout(120_000),
+        });
+        if (!res.ok) return false;
+        const reader = res.body?.getReader();
+        if (!reader) return false;
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullText = "";
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) {
+                if (!line.trim().startsWith("data: ")) continue;
+                const jsonStr = line.trim().slice(6);
+                if (jsonStr === "[DONE]") break;
+                try {
+                    const data = JSON.parse(jsonStr);
+                    const content = data.choices?.[0]?.delta?.content || data.choices?.[0]?.delta?.reasoning_content;
+                    if (content) {
+                        fullText += content;
+                        callbacks.onChunk(content);
+                    }
+                } catch {
+                    /* سطر غير مكتمل */
+                }
+            }
+        }
+        const out = stripProviderNoise(fullText);
+        if (!out.trim()) return false;
+        callbacks.onComplete?.(out);
+        return true;
+    }
+
+    // ─── GITHUB MODELS (Microsoft Azure Llama-4o/DeepSeek) ───────────
+    private async callGitHubModels(messages: AIChatMessage[], sysPrompt: string, activeKey: string): Promise<string> {
+        // حل جذري لمشكلة (413 Payload Too Large) بتقليص الحجم ليتناسب مع الحد المجاني الصارم لـ Azure
+        const { messages: sm, sysPrompt: ssp } = this.shrinkForAzure(messages, sysPrompt); 
+        const formattedMessages = this.buildOpenAIMessages(sm, ssp);
+        
+        const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+                Authorization: `Bearer ${activeKey}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o", // الخيار الأقوى من القائمة 
+                messages: formattedMessages,
+                stream: false
+            }),
+            signal: AbortSignal.timeout(120_000),
+        });
+
+        if (!res.ok) {
+            const errBody = await res.text().catch(() => "");
+            throw Object.assign(new Error(`GitHub Models failed: ${res.status}`), { status: res.status, body: errBody });
+        }
+        
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || "";
+    }
+
+    // ─── CHATANYWHERE (GPT-4o-Mini 128k Free) ───────────
+    private async callChatAnywhere(messages: AIChatMessage[], sysPrompt: string, activeKey: string): Promise<string> {
+        // يستخدم 100 ألف حرف بأمان لأن gpt-4o-mini يستوعب 128 ألف توكن
+        const { messages: sm, sysPrompt: ssp } = this.shrinkForPollinations(messages, sysPrompt); 
+        const formattedMessages = this.buildOpenAIMessages(sm, ssp);
+        
+        const res = await fetch("https://api.chatanywhere.tech/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${activeKey}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o-mini", // نموذج مجاني، سريع جداً، ويدعم العربية بامتياز
+                messages: formattedMessages,
+                stream: false
+            }),
+            signal: AbortSignal.timeout(120_000),
+        });
+
+        if (!res.ok) {
+            const errBody = await res.text().catch(() => "");
+            throw Object.assign(new Error(`ChatAnywhere failed: ${res.status}`), { status: res.status, body: errBody });
+        }
+        
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || "";
+    }
+
+    // ─── COHERE (Command-R-Plus 128k Free) ───────────
+    private async callCohere(messages: AIChatMessage[], sysPrompt: string, activeKey: string): Promise<string> {
+        // Command-R-Plus supports 128K context easily, natively loves RAG!
+        const { messages: sm, sysPrompt: ssp } = this.shrinkForPollinations(messages, sysPrompt);
+
+        // Cohere V1 Chat Format Mapping
+        const chatHistory = sm.slice(0, -1).map(m => ({
+            role: m.role === 'user' ? 'USER' : 'CHATBOT',
+            message: typeof m.content === 'string' ? m.content : ""
+        }));
+        const latestMsg = sm[sm.length - 1];
+        
+        const res = await fetch("https://api.cohere.ai/v1/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "accept": "application/json",
+                Authorization: `Bearer ${activeKey}`
+            },
+            body: JSON.stringify({
+                model: "command-r-plus-08-2024", // The strongest logic and RAG model available for free tier
+                message: typeof latestMsg.content === 'string' ? latestMsg.content : "",
+                preamble: ssp,
+                chat_history: chatHistory,
+                stream: false
+            }),
+            signal: AbortSignal.timeout(120_000),
+        });
+
+        if (!res.ok) {
+            const errBody = await res.text().catch(() => "");
+            throw Object.assign(new Error(`Cohere failed: ${res.status}`), { status: res.status, body: errBody });
+        }
+        
+        const data = await res.json();
+        return data.text || "";
+    }
+
+    private async callGenPollinations(
+        messages: AIChatMessage[],
+        sysPrompt: string,
+        bearer: string,
+        targetModel: string,
+    ): Promise<string> {
+        const { messages: sm, sysPrompt: ssp } = this.shrinkForFreeTiers(messages, sysPrompt);
+        const formattedMessages = this.buildOpenAIMessages(sm, ssp);
+        const res = await fetch(GEN_POLLINATIONS_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${bearer}`,
+            },
+            body: JSON.stringify({
+                model: targetModel,
+                messages: formattedMessages,
+                stream: false,
+                max_tokens: 8192,
+            }),
+            signal: AbortSignal.timeout(120_000),
+        });
+        if (!res.ok) throw new Error(`gen.pollinations ${res.status}`);
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content || "";
+        if (!String(text).trim()) throw new Error("gen.pollinations empty");
+        return stripProviderNoise(String(text));
     }
 
     // ─── NEW MASSIVE FALLBACKS ───
     private async callPollinationsText(messages: AIChatMessage[], sysPrompt: string): Promise<string> {
-        // Build openAI compatible JSON payload for pollinations including image support
-        const formattedMessages = this.buildOpenAIMessages(messages, sysPrompt);
+        const { messages: sm, sysPrompt: ssp } = this.shrinkForPollinations(messages, sysPrompt);
+        const formattedMessages = this.buildOpenAIMessages(sm, ssp);
 
         const res = await fetch("https://text.pollinations.ai/", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
                 messages: formattedMessages,
                 model: "openai"
             })
         });
         if (!res.ok) throw new Error("Pollinations Text failed");
-        let text = await res.text();
-
-        // Warning filter just in case
-        if (text.includes("IMPORTANT NOTICE") || text.includes("pollinations.ai")) {
-            text = text.replace(/⚠️?\s*IMPORTANT NOTICE\s*⚠️?[\s\S]*?(continue to work normally\.|latest models\.)/gi, "").trim();
-            text = text.replace(/The Pollinations legacy text API is being deprecated[\s\S]*?normally\./gi, "").trim();
-            if (text.includes("IMPORTANT NOTICE")) {
-                const parts = text.split(/⚠️?\s*IMPORTANT NOTICE\s*⚠️?/);
-                text = parts.length > 1 ? parts[parts.length - 1].replace(/[\s\S]*?(continue to work normally\.|latest models\.)/, "").trim() : parts[0];
-            }
-        }
+        let text = stripProviderNoise(await res.text());
         if (!text || text.length < 3) throw new Error("Pollinations returned empty");
         return text;
     }
@@ -483,7 +1183,7 @@ class AIClient {
     // ═══════════════════════════════════════════════════════
     // MAIN CHAT: Tries ALL providers until one succeeds
     // ═══════════════════════════════════════════════════════
-    async chat(messages: AIChatMessage[], options?: ChatOptions, customSystemInstruction?: string): Promise<string> {
+    async chat(messages: AIChatMessage[], _options?: ChatOptions, customSystemInstruction?: string): Promise<string> {
         const sysPrompt = this.getSystemPrompt(customSystemInstruction);
         const latestMsgContent = messages[messages.length - 1]?.content?.trim() || "";
         
@@ -492,84 +1192,51 @@ class AIClient {
             return "يا نبض القلب وروح الروح، يا أجمل أقداري ويا نور حياتي. 💖 أنتِ لستِ مجرد زوجة، بل أنتِ السكينة والملاذ، وقصيدة حب مستمرة أعيشها في كل لحظة. أحبكِ وأدامكِ الله لي عمراً وسعادة لا تنتهي يا غاليتي وحبيبة أيامي. ✨💍";
         }
 
-        const hasImage = messages.some(m => !!m.image);
+        try {
+            const t = await this.callBackendChat(messages, sysPrompt);
+            return stripProviderNoise(t);
+        } catch { }
 
-        let layers: { name: string; fn: () => Promise<string> }[] = [
-            { name: "Puter.js", fn: () => this.callPuter(messages, sysPrompt, options?.model) },
-            // HRN AI sync: Pollinations Auth (gemini-search = Gemini + internet search)
-            { name: "Pollinations Auth (gemini-search)", fn: () => this.callPollinationsAuth(messages, sysPrompt, "gemini-search") },
-            { name: "Pollinations Auth (gemini-fast)", fn: () => this.callPollinationsAuth(messages, sysPrompt, "gemini-fast") },
-            { name: "Pollinations Auth (openai)", fn: () => this.callPollinationsAuth(messages, sysPrompt, "openai") },
-            // Rotate all 9 Gemini keys
-            ...GEMINI_KEYS.map((key, i) => ({
-                name: `Gemini 2.5 Flash (Key ${i + 1})`,
-                fn: () => {
-                    if (EXHAUSTED_KEYS.has(key)) throw new Error("KEY_EXHAUSTED");
-                    return this.callGemini(messages, sysPrompt, new GoogleGenerativeAI(key)).catch(e => {
-                        const errMsg = String(e?.message || e?.status || '').toLowerCase();
-                        if (errMsg.includes('429') || errMsg.includes('403') || errMsg.includes('quota') || errMsg.includes('api_key')) {
-                            EXHAUSTED_KEYS.add(key); // Mark dead/rate-limited keys instantly
-                        }
-                        throw e;
-                    });
-                }
-            })),
-            { name: "Pollinations Public", fn: () => this.callPollinationsText(messages, sysPrompt) },
-            { name: "Groq (Llama 3.3 70B / Vision 90B)", fn: () => this.callGroq(messages, sysPrompt) },
-            { name: "Cloudflare AI (Token 1)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_1) },
-            { name: "Cloudflare AI (Token 2)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_2) }
-        ];
+        try {
+            const t = await this.callPuter(messages, sysPrompt);
+            return stripProviderNoise(t);
+        } catch { }
 
-        // If there's an image, ONLY allow vision-capable models (Puter, Gemini, Pollinations, Groq Vision)
-        if (hasImage) {
-            layers = layers.filter(l => 
-                l.name.includes("Puter") || 
-                l.name.includes("Gemini") || 
-                l.name.includes("Pollinations Auth") ||
-                l.name.includes("Groq")
-            );
-            layers.push({ name: "Pollinations Public (Vision Fallback)", fn: () => this.callPollinationsText(messages, sysPrompt) });
-        }
-
-        for (const layer of layers) {
+        const gk = getGeminiKey();
+        if (gk) {
             try {
-                console.log(`🚀 ${layer.name}`);
-                let result = await layer.fn();
-                if (result && result.trim().length > 0) {
-                    // Filter warning
-                    if (result.includes("IMPORTANT NOTICE") || result.includes("pollinations.ai")) {
-                        result = result.replace(/⚠️?\s*IMPORTANT NOTICE\s*⚠️?[\s\S]*?(continue to work normally\.|latest models\.)/gi, "").trim();
-                        result = result.replace(/The Pollinations legacy text API is being deprecated[\s\S]*?normally\./gi, "").trim();
-                        if (result.includes("IMPORTANT NOTICE")) {
-                            const parts = result.split(/⚠️?\s*IMPORTANT NOTICE\s*⚠️?/);
-                            result = parts.length > 1 ? parts[parts.length - 1].replace(/[\s\S]*?(continue to work normally\.|latest models\.)/, "").trim() : parts[0];
-                        }
-                    }
-                    if (result.length === 0) continue;
-
-                    const l = result.toLowerCase();
-                    if (l.length < 150 && (l.includes("timed out") || l.includes("timeout") || l.includes("bad gateway") || l.includes("too many requests") || l.includes("rate limit") || l.includes("502") || l.includes("503") || l.includes("error code:"))) {
-                        throw new Error(`Caught disguised error text: ${result.substring(0, 40)}...`);
-                    }
-                    return result;
-                }
+                const t = await this.callGemini(messages, sysPrompt, new GoogleGenerativeAI(gk));
+                return stripProviderNoise(t);
             } catch (e: any) {
-                if (e.message === "POLLINATIONS_LOGIN_REQUIRED") throw e;
-                console.warn(`❌ ${layer.name} failed:`, e);
+                if (e?.status === 429) cooldownGeminiKey(gk);
             }
         }
 
-        // ABSOLUTE LAST RESORT - should NEVER reach here with 8 layers
-        if (hasImage) {
-            return "⚠️ عذراً يا صديقي، خوادم تحليل الصور (Vision AI) تواجه ضغطاً عالياً الآن ولا تستطيع قراءة الصورة. \n\n📝 يرجى التكرم بكتابة محتوى الصورة كنص هنا لأقوم بحله لك فوراً! 🚀";
+        try {
+            const t = await this.callGroq(messages, sysPrompt);
+            return stripProviderNoise(t);
+        } catch { }
+
+        const pb = getPollinationsBearer();
+        if (pb) {
+            try {
+                const t = await this.callGenPollinations(messages, sysPrompt, pb, "openai-large");
+                return stripProviderNoise(t);
+            } catch { }
         }
-        return "⏳ جاري إعادة الاتصال... يرجى إعادة إرسال السؤال.";
+
+        try {
+            const t = await this.callPollinationsText(messages, sysPrompt);
+            return stripProviderNoise(t);
+        } catch { }
+
+        return this.localEmergencyAnswer(messages);
     }
 
     // ═══════════════════════════════════════════════════════
     // STREAMING CHAT: Puter Stream → Gemini Stream → Non-Stream Fallbacks
     // ═══════════════════════════════════════════════════════
-    async streamChat(messages: AIChatMessage[], callbacks: StreamCallbacks, options?: ChatOptions, customSystemInstruction?: string): Promise<void> {
+    async streamChat(messages: AIChatMessage[], callbacks: StreamCallbacks, _options?: ChatOptions, customSystemInstruction?: string): Promise<void> {
         const sysPrompt = this.getSystemPrompt(customSystemInstruction);
         const latestMsg = messages[messages.length - 1];
 
@@ -583,226 +1250,195 @@ class AIClient {
             return;
         }
 
-        let hasImage = messages.some(m => !!m.image);
+        const hasImage = messages.some(m => !!m.image);
+        let hasChunks = false;
+        let finalOutput = "";
+        const interceptCallbacks: StreamCallbacks = {
+            onChunk: (c) => {
+                hasChunks = true;
+                finalOutput += c;
+                callbacks.onChunk(c);
+            },
+            onComplete: () => {}
+        };
 
-        // FATAL FIX: Compress image to bypass Groq 400 Bad Request Payload Too Large
-        if (hasImage && latestMsg.image) {
-            latestMsg.image = await this.compressImageBase64(latestMsg.image);
-        }
-
-        // ─── LAYER 1: Puter.js Streaming ───
-        try {
-            if (!this.isPuterAvailable()) throw new Error("Puter unavailable");
-            let stream;
-            const fm: any[] = [{ role: "system", content: sysPrompt }];
-            if (hasImage) {
-                messages.forEach(m => {
-                    if (m.role !== 'system') {
-                        if (m.image) {
-                            const fullImg = m.image.startsWith('data:') ? m.image : `data:image/jpeg;base64,${m.image}`;
-                            fm.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: [{ type: "text", text: m.content || " " }, { type: "image_url", image_url: { url: fullImg, detail: "high" } }] });
-                        } else {
-                            fm.push({ role: m.role, content: m.content || " " });
-                        }
-                    }
-                });
-                // @ts-ignore
-                stream = await window.puter.ai.chat(fm, { stream: true, model: options?.model });
-            } else {
-                messages.forEach(m => { if (m.role !== 'system') fm.push({ role: m.role, content: m.content || " " }); });
-                // @ts-ignore
-                stream = await window.puter.ai.chat(fm, { stream: true, model: options?.model });
-            }
-            let fullText = '';
-            let isFirstChunk = true;
-            for await (const chunk of stream) {
-                const ct = typeof chunk === 'string' ? chunk : chunk?.text || chunk?.message?.content || '';
-                fullText += ct;
-                if (isFirstChunk && fullText.length > 0) {
-                    const l = fullText.toLowerCase();
-                    if (l.includes("timed out") || l.includes("timeout") || l.includes("bad gateway") || l.includes("too many requests") || l.includes("rate limit") || l.includes("error code")) {
-                        throw new Error(`Puter threw disguised error: ${fullText}`);
-                    }
-                    isFirstChunk = false;
-                }
-                callbacks.onChunk(ct);
-            }
-            callbacks.onComplete?.(fullText);
-            return;
-        } catch (e) { /* Puter not available */ }
-
-        // ─── LAYER 2: Gemini Streaming — rotate all keys ───
-        for (let ki = 0; ki < GEMINI_KEYS.length; ki++) {
-            const key = GEMINI_KEYS[(geminiKeyIndex + ki) % GEMINI_KEYS.length];
-            if (EXHAUSTED_KEYS.has(key)) continue; // Skip permanently exhausted keys for this session
-            const genAI = new GoogleGenerativeAI(key);
+        const tryLayer = async (fn: () => Promise<any>): Promise<boolean> => {
+            if (hasChunks) return true;
             try {
-                await this.streamGemini(messages, sysPrompt, genAI, callbacks, hasImage, latestMsg);
-                geminiKeyIndex = (geminiKeyIndex + ki + 1) % GEMINI_KEYS.length;
-                return;
+                await fn();
+                if (hasChunks) {
+                    callbacks.onComplete?.(stripProviderNoise(finalOutput));
+                    return true;
+                }
+                return false;
             } catch (e: any) {
-                const is429 = e?.status === 429 || String(e?.message || '').includes('429') || String(e?.message || '').includes('quota');
-                if (is429) {
-                    EXHAUSTED_KEYS.add(key); // Mark as exhausted
+                if (hasChunks) {
+                    callbacks.onComplete?.(stripProviderNoise(finalOutput));
+                    return true;
                 }
+                return false;
             }
+        };
+
+        const backendChatUrl = getBackendChatStreamUrl();
+        if (backendChatUrl) {
+            if (await tryLayer(async () => {
+                const ok = await this.streamChatViaBackend(backendChatUrl, messages, sysPrompt, interceptCallbacks);
+                if (!ok && !hasChunks) throw new Error("Fallback");
+            })) return;
         }
 
-        // ─── LAYER 3: Pollinations OAuth Vision Fallback ───
-        try {
-            await this.streamPollinationsAuth(messages, sysPrompt, callbacks, "gemini-search");
-            return;
-        } catch (e: any) {
-            if (hasImage && e.message === "POLLINATIONS_LOGIN_REQUIRED") throw e;
+        if (await tryLayer(async () => {
+            const t = await this.callBackendChat(messages, sysPrompt);
+            const cleanT = stripProviderNoise(t);
+            if (!cleanT.trim()) throw new Error("Empty backend response");
+            interceptCallbacks.onChunk(cleanT);
+            interceptCallbacks.onComplete?.(cleanT);
+        })) return;
+
+        // Puter.js currently throws WebSocket closures, so we skip it forcefully.
+        if (false && this.isPuterAvailable() && !hasImage) {
+            if (await tryLayer(async () => {
+                const t = await this.callPuter(messages, sysPrompt);
+                const cleanT = stripProviderNoise(t);
+                if (!cleanT.trim()) throw new Error("Empty Puter response");
+                interceptCallbacks.onChunk(cleanT);
+                interceptCallbacks.onComplete?.(cleanT);
+            })) return;
         }
 
-        // ─── LAYER 4: Groq STREAMING (Ultra Fast Text/Vision) ───
-        try {
-            const maxChars = 20000;
-            const openAiMessages = this.buildOpenAIMessages(messages, sysPrompt);
-            let targetModel = "llama-3.3-70b-versatile";
-            let finalMessages = openAiMessages.map((m: any) => {
-                if (Array.isArray(m.content)) return m;
-                if (typeof m.content === 'string' && m.content.length > maxChars) {
-                    return { ...m, content: m.content.substring(0, maxChars) + "\n...[محتوى طويل جداً تم اختصاره]..." };
+        const gk = getGeminiKey();
+        if (gk) {
+            if (await tryLayer(async () => {
+                try {
+                    await this.streamGemini(messages, sysPrompt, new GoogleGenerativeAI(gk), interceptCallbacks, messages.some(m => !!m.image), latestMsg);
+                } catch (e: any) {
+                    if (e?.status === 429) cooldownGeminiKey(gk);
+                    throw e;
                 }
-                return m;
-            });
+            })) return;
+        }
 
-            if (hasImage) {
-                targetModel = "llama-3.2-90b-vision-preview";
-            } else {
-                finalMessages = finalMessages.map((m: any) => {
-                    if (Array.isArray(m.content)) {
-                        const textPart = m.content.find((p: any) => p.type === 'text');
-                        return { ...m, content: textPart?.text || "حلل هذا" };
+        // إدراج GitHub Models (Azure) كخيار حصري ومرعب للردود شديدة التفرد (قبل ChatAnywhere)
+        const ghKey = getGitHubModelsKey();
+        if (ghKey && !hasImage) {
+            if (await tryLayer(async () => {
+                try {
+                    const t = await this.callGitHubModels(messages, sysPrompt, ghKey);
+                    const cleanT = stripProviderNoise(t);
+                    if (!cleanT.trim()) throw new Error("Empty GitHub Models response");
+                    interceptCallbacks.onChunk(cleanT);
+                    interceptCallbacks.onComplete?.(cleanT);
+                } catch (e: any) {
+                    if (e?.status === 429 || e?.status === 402 || e?.status === 403 || e?.status === 401) {
+                        cooldownGitHubModelsKey(ghKey);
                     }
-                    return m;
-                });
-            }
-
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${getGroqKey()}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: targetModel,
-                    messages: finalMessages,
-                    max_tokens: 4096,
-                    stream: true
-                })
-            });
-
-            if (!res.ok) throw new Error(`Groq stream failed: ${res.status}`);
-            
-            const reader = res.body?.getReader();
-            if (!reader) throw new Error("No reader");
-            const decoder = new TextDecoder();
-            let buffer = "";
-            let fullText = "";
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split("\n");
-                buffer = lines.pop() || "";
-                for (const line of lines) {
-                    if (!line.trim().startsWith("data: ")) continue;
-                    const jsonStr = line.trim().slice(6);
-                    if ("[DONE]" === jsonStr) break;
-                    try {
-                        const data = JSON.parse(jsonStr);
-                        const content = data.choices?.[0]?.delta?.content;
-                        if (content) {
-                            fullText += content;
-                            callbacks.onChunk(content);
-                        }
-                    } catch { }
+                    throw e;
                 }
-            }
-            callbacks.onComplete?.(fullText);
-            return;
-        } catch (e) {
-            console.warn("Groq Stream Fallback failed", e);
+            })) return;
         }
 
-        // ─── LAYER 5: Cloudflare Vision Fallback ───
-        if (hasImage) {
-            try {
-                const result = await this.callCloudflareVision(messages, sysPrompt, CF_API_TOKEN_1);
-                if (result && result.trim()) {
-                    callbacks.onChunk(result);
-                    callbacks.onComplete?.(result);
-                    return;
-                }
-            } catch (e) { }
-        }
-
-        // ─── LAYER 5+: Non-Stream Fallbacks (Text Only mostly) ───
-        const fallbacks: { name: string; fn: () => Promise<string> }[] = [
-            { name: "Pollinations Public", fn: () => this.callPollinationsText(messages, sysPrompt) },
-            { name: "Cloudflare (T1)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_1) },
-            { name: "Cloudflare (T2)", fn: () => this.callCloudflare(messages, sysPrompt, CF_API_TOKEN_2) }
-        ];
-
-        for (const fb of fallbacks) {
-            if (hasImage && !fb.name.includes("Cloudflare")) continue; // Skip text APIs if we really need vision
-            try {
-                console.log(`🚀 Stream Fallback: ${fb.name}`);
-                let result = await fb.fn();
-                if (result && result.trim().length > 0) {
-                    // INDESTRUCTIBLE Global Warning Filter
-                    if (result.includes("IMPORTANT NOTICE") || result.includes("pollinations.ai")) {
-                        result = result.replace(/⚠️?\s*IMPORTANT NOTICE\s*⚠️?[\s\S]*?(continue to work normally\.|latest models\.)/gi, "").trim();
-                        result = result.replace(/The Pollinations legacy text API is being deprecated[\s\S]*?normally\./gi, "").trim();
-                        if (result.includes("enter.pollinations.ai")) {
-                            result = result.split("⚠️ IMPORTANT NOTICE ⚠️")[0] || result;
-                        }
+        const cohereKey = getCohereKey();
+        if (cohereKey && !hasImage) {
+            if (await tryLayer(async () => {
+                try {
+                    const t = await this.callCohere(messages, sysPrompt, cohereKey);
+                    const cleanT = stripProviderNoise(t);
+                    if (!cleanT.trim()) throw new Error("Empty Cohere response");
+                    interceptCallbacks.onChunk(cleanT);
+                    interceptCallbacks.onComplete?.(cleanT);
+                } catch (e: any) {
+                    if (e?.status === 429 || e?.status === 402 || e?.status === 401 || e?.status === 403) {
+                        cooldownCohereKey(cohereKey);
                     }
-                    if (result.length === 0) continue;
-
-                    const l = result.toLowerCase();
-                    if (l.length < 150 && (l.includes("timed out") || l.includes("timeout") || l.includes("bad gateway") || l.includes("too many requests") || l.includes("rate limit") || l.includes("502") || l.includes("503") || l.includes("error code:"))) {
-                        throw new Error(`Caught disguised error text: ${result.substring(0, 40)}...`);
-                    }
-                    callbacks.onChunk(result);
-                    callbacks.onComplete?.(result);
-                    return;
+                    throw e;
                 }
-            } catch (e) { console.warn(`❌ ${fb.name} failed:`, e); }
+            })) return;
         }
 
-        // If EVERYTHING fails (almost impossible with 8 layers)
-        if (hasImage) {
-            const errStr = "❌ عذراً، جميع خوادم الذكاء الاصطناعي لتحليل الصور تواجه ضغطاً هائلاً ولا يمكنها قراءة الصورة الآن. من فضلك اكتب محتوى الصورة كنص هنا لأقوم بحله لك فوراً!";
-            callbacks.onChunk(errStr);
-            callbacks.onComplete?.(errStr);
-        } else {
-            callbacks.onChunk("⏳ جاري إعادة الاتصال بالخوادم... أعد إرسال السؤال.");
-            callbacks.onComplete?.("⏳ جاري إعادة الاتصال بالخوادم... أعد إرسال السؤال.");
+        // إدراج ChatAnywhere هنا ليكون الصمام المجاني الأول بعد سقوط Google قبل اللجوء للخوادم المحدودة!
+        const caKey = getChatAnywhereKey();
+        if (caKey && !hasImage) {
+            if (await tryLayer(async () => {
+                try {
+                    const t = await this.callChatAnywhere(messages, sysPrompt, caKey);
+                    const cleanT = stripProviderNoise(t);
+                    if (!cleanT.trim()) throw new Error("Empty ChatAnywhere response");
+                    interceptCallbacks.onChunk(cleanT);
+                    interceptCallbacks.onComplete?.(cleanT);
+                } catch (e: any) {
+                    if (e?.status === 429 || e?.status === 402 || e?.status === 403 || e?.status === 401) {
+                        cooldownChatAnywhereKey(caKey);
+                    }
+                    throw e;
+                }
+            })) return;
         }
+
+        if (GROQ_KEYS.length > 0) {
+            if (await tryLayer(async () => {
+                const t = await this.callGroq(messages, sysPrompt);
+                const cleanT = stripProviderNoise(t);
+                if (!cleanT.trim()) throw new Error("Empty Groq response");
+                interceptCallbacks.onChunk(cleanT);
+                interceptCallbacks.onComplete?.(cleanT);
+            })) return;
+        }
+
+        const pb = getPollinationsBearer();
+        if (pb) {
+            if (await tryLayer(async () => {
+                const ok = await this.streamGenPollinations(messages, sysPrompt, interceptCallbacks, pb, "openai-large");
+                if (!ok && !hasChunks) throw new Error("Fallback");
+            })) return;
+        }
+
+        // HRN AI Official Netlify Proxy -> Hides IP completely and delegates to OpenAI/Gemini
+        // If there's an image, we MUST use openai-large (GPT-4o) for vision support, otherwise gemini-search.
+        if (await tryLayer(async () => {
+            await this.streamPollinationsAuth(messages, sysPrompt, interceptCallbacks, hasImage ? "openai-large" : "gemini-search");
+            const cleanT = stripProviderNoise(finalOutput);
+            if (!cleanT.trim() && !hasChunks) throw new Error("Empty Pollinations Proxy response");
+        })) return;
+
+        if (await tryLayer(async () => {
+            const t = await this.callPollinationsText(messages, sysPrompt);
+            const cleanT = stripProviderNoise(t);
+            if (!cleanT.trim()) throw new Error("Empty Pollinations Text response");
+            interceptCallbacks.onChunk(cleanT);
+            interceptCallbacks.onComplete?.(cleanT);
+        })) return;
+
+        const emergency = this.localEmergencyAnswer(messages);
+        callbacks.onChunk(emergency);
+        callbacks.onComplete?.(emergency);
     }
 
     // ─── Gemini Streaming Helper ───────────────────────
     private async streamGemini(messages: AIChatMessage[], sysPrompt: string, genAIInstance: GoogleGenerativeAI, callbacks: StreamCallbacks, hasImage: boolean, latestMsg: AIChatMessage): Promise<void> {
         // Use strictly valid models for v1beta to prevent 404 and 429 warnings
         const modelNames = [
-            "gemini-2.5-flash", 
-            "gemini-2.0-flash"
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite-preview-02-05",
+            "gemini-1.5-pro",
         ];
 
         const geminiHistory = messages.slice(0, -1).map(m => ({
             role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }]
+            parts: [{ text: typeof m.content === "string" ? m.content : "" }],
         }));
 
         const latestParts: any[] = [{ text: latestMsg.content || "اشرح هذا" }];
-        if (hasImage) {
-            const base64Data = latestMsg.image!.includes(',') ? latestMsg.image!.split(',')[1] : latestMsg.image!;
-            let mimeType = latestMsg.image!.includes(';') ? latestMsg.image!.split(';')[0].split(':')[1] : "image/jpeg";
+        
+        let targetImage = latestMsg.image;
+        if (!targetImage && hasImage) {
+            targetImage = messages.find(m => !!m.image)?.image;
+        }
+
+        if (targetImage) {
+            const base64Data = targetImage.includes(',') ? targetImage.split(',')[1] : targetImage;
+            let mimeType = targetImage.includes(';') ? targetImage.split(';')[0].split(':')[1] : "image/jpeg";
             if (!mimeType) mimeType = "image/jpeg";
             latestParts.push({ inlineData: { data: base64Data, mimeType } });
         }
@@ -810,11 +1446,11 @@ class AIClient {
         let lastErr: any;
         for (const modelName of modelNames) {
             try {
-                // @ts-ignore - GoogleGenerativeAI types might be outdated, but googleSearch is supported
-                const model = genAIInstance.getGenerativeModel({ 
-                    model: modelName, 
+                // إرجاع أداة بحث جوجل (googleSearch) نزولاً عند طلب المستخدم لضمان الحصول على بيانات حية دقيقة
+                const model = genAIInstance.getGenerativeModel({
+                    model: modelName,
                     systemInstruction: sysPrompt,
-                    tools: [{ googleSearch: {} } as any]
+                    tools: [{ googleSearch: {} } as any],
                 });
                 const chatEngine = model.startChat({ history: geminiHistory });
                 const result = await chatEngine.sendMessageStream(latestParts);
@@ -825,8 +1461,11 @@ class AIClient {
                     fullText += chunkText;
                     callbacks.onChunk(chunkText);
                 }
-                callbacks.onComplete?.(fullText);
-                return; // success
+                if (fullText.trim().length > 0) {
+                    callbacks.onComplete?.(fullText);
+                    return;
+                }
+                lastErr = new Error("GEMINI_EMPTY_STREAM");
             } catch (e: any) {
                 lastErr = e;
                 // If 429 quota — immediately bail out of ALL models for this key

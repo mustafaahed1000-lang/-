@@ -12,7 +12,14 @@ export default defineConfig({
     }),
   ],
   server: {
-    allowedHosts: true
+    allowedHosts: true,
+    // بث الذكاء من Express (backend/server.ts) — المفتاح على السيرفر فقط عند النشر
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     allowedHosts: true
